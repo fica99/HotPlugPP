@@ -237,6 +237,8 @@ cmake --build . --target sample_plugin
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
+**Code Formatting**: The project uses clang-format for consistent code style. Run `./format-code.sh` before submitting pull requests.
+
 Areas where contributions are especially welcome:
 - Additional example plugins
 - Platform-specific testing (macOS, Windows)

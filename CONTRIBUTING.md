@@ -74,6 +74,47 @@ cmake --build .
   - Explain "why", not "what"
   - Keep comments up to date
 
+### Code Formatting
+
+The project uses **clang-format** to enforce consistent code style. A `.clang-format` configuration file is provided in the repository root.
+
+#### Formatting Your Code
+
+Before submitting a pull request, format your code using one of these methods:
+
+**Option 1: Using the format script**
+```bash
+./format-code.sh
+```
+
+**Option 2: Using CMake target**
+```bash
+cd build
+cmake --build . --target format-code
+```
+
+**Option 3: Using clang-format directly**
+```bash
+clang-format -i path/to/your/file.cpp
+```
+
+#### Checking Code Formatting
+
+To check if your code follows the style guidelines without modifying files:
+
+**Using the check script**
+```bash
+./check-format.sh
+```
+
+**Using CMake target**
+```bash
+cd build
+cmake --build . --target check-format
+```
+
+All pull requests must pass the formatting check.
+
 ### Example
 
 ```cpp

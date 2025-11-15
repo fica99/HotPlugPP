@@ -1,18 +1,19 @@
 #pragma once
 
 #include "IPlugin.hpp"
-#include <string>
-#include <memory>
-#include <functional>
+
 #include <chrono>
+#include <functional>
+#include <memory>
+#include <string>
 
 // Platform-specific includes
 #ifdef _WIN32
-    #include <windows.h>
-    typedef HMODULE LibraryHandle;
+#include <windows.h>
+typedef HMODULE LibraryHandle;
 #else
-    #include <dlfcn.h>
-    typedef void* LibraryHandle;
+#include <dlfcn.h>
+typedef void* LibraryHandle;
 #endif
 
 namespace hotplugpp {
@@ -29,16 +30,16 @@ struct PluginInfo {
     std::chrono::system_clock::time_point lastModified;
     bool isLoaded;
 
-    PluginInfo() : handle(nullptr), instance(nullptr), 
-                   createFunc(nullptr), destroyFunc(nullptr), 
-                   isLoaded(false) {}
+    PluginInfo()
+        : handle(nullptr), instance(nullptr), createFunc(nullptr), destroyFunc(nullptr),
+          isLoaded(false) {}
 };
 
 /**
  * @brief Manages dynamic loading, unloading, and hot-reloading of plugins
  */
 class PluginLoader {
-public:
+  public:
     PluginLoader();
     ~PluginLoader();
 
@@ -88,7 +89,7 @@ public:
      */
     void setReloadCallback(std::function<void()> callback);
 
-private:
+  private:
     PluginInfo m_pluginInfo;
     std::function<void()> m_reloadCallback;
 
