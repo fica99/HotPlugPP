@@ -21,7 +21,7 @@ Complete API documentation for the HotPlugPP plugin system.
 Base interface that all plugins must implement.
 
 ```cpp
-namespace hotplug {
+namespace hotplugpp {
     class IPlugin {
     public:
         virtual ~IPlugin() = default;
@@ -334,7 +334,7 @@ loader.setReloadCallback([]() {
 
 ## Macros
 
-### HOTPLUG_CREATE_PLUGIN(PluginClass)
+### HOTPLUGPP_CREATE_PLUGIN(PluginClass)
 
 Convenience macro to create the required factory functions for a plugin.
 
@@ -347,27 +347,27 @@ Convenience macro to create the required factory functions for a plugin.
 
 **Example:**
 ```cpp
-class MyPlugin : public hotplug::IPlugin {
+class MyPlugin : public hotplugpp::IPlugin {
     // ... implementation ...
 };
 
-HOTPLUG_CREATE_PLUGIN(MyPlugin)
+HOTPLUGPP_CREATE_PLUGIN(MyPlugin)
 ```
 
 **Equivalent to:**
 ```cpp
-extern "C" HOTPLUG_API hotplug::IPlugin* createPlugin() {
+extern "C" HOTPLUGPP_API hotplugpp::IPlugin* createPlugin() {
     return new MyPlugin();
 }
 
-extern "C" HOTPLUG_API void destroyPlugin(hotplug::IPlugin* plugin) {
+extern "C" HOTPLUGPP_API void destroyPlugin(hotplugpp::IPlugin* plugin) {
     delete plugin;
 }
 ```
 
 ---
 
-### HOTPLUG_API
+### HOTPLUGPP_API
 
 Platform-specific export macro for shared library symbols.
 
@@ -403,8 +403,8 @@ Platform-specific export macro for shared library symbols.
 
 ```cpp
 // Function pointer types for plugin factories
-typedef hotplug::IPlugin* (*CreatePluginFunc)();
-typedef void (*DestroyPluginFunc)(hotplug::IPlugin*);
+typedef hotplugpp::IPlugin* (*CreatePluginFunc)();
+typedef void (*DestroyPluginFunc)(hotplugpp::IPlugin*);
 
 // Platform-specific library handle
 #ifdef _WIN32
@@ -447,7 +447,7 @@ if (!loader.loadPlugin(path)) {
 
 2. **Use RAII in plugins:**
 ```cpp
-class MyPlugin : public IPlugin {
+class MyPlugin : public hotplugpp::IPlugin {
     std::unique_ptr<Resource> m_resource;
     
     bool onLoad() override {
@@ -472,10 +472,10 @@ loader.setReloadCallback([&]() {
 ### Basic Plugin
 
 ```cpp
-#include "hotplug/IPlugin.hpp"
+#include "hotplugpp/IPlugin.hpp"
 #include <iostream>
 
-class SimplePlugin : public hotplug::IPlugin {
+class SimplePlugin : public hotplugpp::IPlugin {
 public:
     bool onLoad() override {
         std::cout << "SimplePlugin loaded!" << std::endl;
@@ -491,17 +491,17 @@ public:
     }
 
     const char* getName() const override { return "SimplePlugin"; }
-    hotplug::Version getVersion() const override { return {1, 0, 0}; }
+    hotplugpp::Version getVersion() const override { return {1, 0, 0}; }
     const char* getDescription() const override { return "A simple plugin"; }
 };
 
-HOTPLUG_CREATE_PLUGIN(SimplePlugin)
+HOTPLUGPP_CREATE_PLUGIN(SimplePlugin)
 ```
 
 ### Host Application
 
 ```cpp
-#include "hotplug/PluginLoader.hpp"
+#include "hotplugpp/PluginLoader.hpp"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -512,7 +512,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    hotplug::PluginLoader loader;
+    hotplugpp::PluginLoader loader;
     
     if (!loader.loadPlugin(argv[1])) {
         return 1;
