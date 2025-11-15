@@ -20,11 +20,11 @@ We'll create a simple "Greeter Plugin" that:
 Create a new file `examples/greeter_plugin/GreeterPlugin.cpp`:
 
 ```cpp
-#include "hotplug/IPlugin.hpp"
+#include "hotplugpp/IPlugin.hpp"
 #include <iostream>
 #include <string>
 
-class GreeterPlugin : public hotplug::IPlugin {
+class GreeterPlugin : public hotplugpp::IPlugin {
 public:
     GreeterPlugin() : m_updateCount(0) {
         std::cout << "[GreeterPlugin] Instance created" << std::endl;
@@ -59,8 +59,8 @@ public:
         return "GreeterPlugin";
     }
 
-    hotplug::Version getVersion() const override {
-        return hotplug::Version(1, 0, 0);
+    hotplugpp::Version getVersion() const override {
+        return hotplugpp::Version(1, 0, 0);
     }
 
     const char* getDescription() const override {
@@ -72,7 +72,7 @@ private:
 };
 
 // Export the plugin - this is required!
-HOTPLUG_CREATE_PLUGIN(GreeterPlugin)
+HOTPLUGPP_CREATE_PLUGIN(GreeterPlugin)
 ```
 
 ## Step 2: Add to Build System
@@ -187,7 +187,7 @@ Congratulations! You've created your first hot-reloadable plugin!
 Let's enhance the plugin to keep custom state:
 
 ```cpp
-class GreeterPlugin : public hotplug::IPlugin {
+class GreeterPlugin : public hotplugpp::IPlugin {
 public:
     GreeterPlugin() : m_updateCount(0), m_totalTime(0.0f) {}
 
@@ -267,8 +267,8 @@ State is NOT preserved across reloads. If you need persistent state, consider:
 ### 4. Version Your Plugins
 
 ```cpp
-hotplug::Version getVersion() const override {
-    return hotplug::Version(1, 2, 3);  // major.minor.patch
+hotplugpp::Version getVersion() const override {
+    return hotplugpp::Version(1, 2, 3);  // major.minor.patch
 }
 ```
 
@@ -313,7 +313,7 @@ bool onLoad() override {
 
 **Solution:** Make sure you included:
 ```cpp
-HOTPLUG_CREATE_PLUGIN(YourPluginClassName)
+HOTPLUGPP_CREATE_PLUGIN(YourPluginClassName)
 ```
 
 ### Issue: Hot-reload doesn't work
