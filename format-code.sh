@@ -14,6 +14,7 @@ find . \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) \
     -not -path "*/build/*" \
     -not -path "*/.git/*" \
     -not -path "*/cmake-build-*/*" \
+    -not -path "*/_codeql_build_dir/*" \
     -exec clang-format -i {} +
 
 echo "Code formatting complete!"

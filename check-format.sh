@@ -13,7 +13,8 @@ echo "Checking C++ code formatting..."
 files=$(find . \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) \
     -not -path "*/build/*" \
     -not -path "*/.git/*" \
-    -not -path "*/cmake-build-*/*")
+    -not -path "*/cmake-build-*/*" \
+    -not -path "*/_codeql_build_dir/*")
 
 # Check if any files need formatting
 needs_formatting=0
