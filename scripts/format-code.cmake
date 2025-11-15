@@ -39,8 +39,8 @@ endif()
 message(STATUS "Found clang-format: ${CLANG_FORMAT_EXECUTABLE}")
 message(STATUS "Formatting C++ code...")
 
-# Get source directory and find all C++ files
-get_filename_component(SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
+# Get source directory (parent of scripts directory) and find all C++ files
+get_filename_component(SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 file(GLOB_RECURSE ALL_SOURCE_FILES
     "${SOURCE_DIR}/src/*.cpp" "${SOURCE_DIR}/src/*.hpp" "${SOURCE_DIR}/src/*.h"
     "${SOURCE_DIR}/include/*.cpp" "${SOURCE_DIR}/include/*.hpp" "${SOURCE_DIR}/include/*.h"

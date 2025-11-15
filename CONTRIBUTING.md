@@ -86,17 +86,17 @@ Before submitting a pull request, format your code using one of these methods:
 
 On Linux/macOS:
 ```bash
-./format-code.sh
+./scripts/format-code.sh
 ```
 
 On Windows:
 ```cmd
-format-code.bat
+scripts\format-code.bat
 ```
 
 Or use CMake directly (works on all platforms):
 ```bash
-cmake -P format-code.cmake
+cmake -P scripts/format-code.cmake
 ```
 
 **Using clang-format directly**
@@ -112,17 +112,17 @@ To check if your code follows the style guidelines without modifying files:
 
 On Linux/macOS:
 ```bash
-./check-format.sh
+./scripts/check-format.sh
 ```
 
 On Windows:
 ```cmd
-check-format.bat
+scripts\check-format.bat
 ```
 
 Or use CMake directly (works on all platforms):
 ```bash
-cmake -P check-format.cmake
+cmake -P scripts/check-format.cmake
 ```
 
 All pull requests must pass the formatting check.
