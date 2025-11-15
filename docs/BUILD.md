@@ -122,7 +122,7 @@ build/
 │   ├── host_app (or host_app.exe on Windows)
 │   └── libsample_plugin.so (or .dll/.dylib)
 └── lib/
-    ├── libhotplug.a
+    ├── libhotplugpp.a
     └── libsample_plugin.so (or .dll/.dylib)
 ```
 
@@ -133,7 +133,7 @@ build/
 ```cmake
 # In your CMakeLists.txt
 add_subdirectory(external/HotPlugPP)
-target_link_libraries(your_target PRIVATE hotplug)
+target_link_libraries(your_target PRIVATE hotplugpp)
 ```
 
 ### Option 2: Install and Use
@@ -147,7 +147,7 @@ sudo cmake --install .
 
 # In your CMakeLists.txt
 find_package(HotPlugPP REQUIRED)
-target_link_libraries(your_target PRIVATE hotplug)
+target_link_libraries(your_target PRIVATE hotplugpp)
 ```
 
 ### Option 3: Header-Only Integration
@@ -206,13 +206,13 @@ cd build/bin
 
 ```cpp
 // MyPlugin.cpp
-#include "hotplug/IPlugin.hpp"
+#include "hotplugpp/IPlugin.hpp"
 
-class MyPlugin : public hotplug::IPlugin {
+class MyPlugin : public hotplugpp::IPlugin {
     // Implement interface...
 };
 
-HOTPLUG_CREATE_PLUGIN(MyPlugin)
+HOTPLUGPP_CREATE_PLUGIN(MyPlugin)
 ```
 
 2. Add to CMakeLists.txt:
@@ -231,7 +231,7 @@ cmake --build . --target my_plugin
 4. Load in your application:
 
 ```cpp
-hotplug::PluginLoader loader;
+hotplugpp::PluginLoader loader;
 loader.loadPlugin("./libmy_plugin.so");
 ```
 
