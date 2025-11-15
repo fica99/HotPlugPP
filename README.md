@@ -45,10 +45,10 @@ For detailed build instructions, see [docs/BUILD.md](docs/BUILD.md).
 1. **Include the plugin interface:**
 
 ```cpp
-#include "hotplug/IPlugin.hpp"
+#include "hotplugpp/IPlugin.hpp"
 #include <iostream>
 
-class MyPlugin : public hotplug::IPlugin {
+class MyPlugin : public hotplugpp::IPlugin {
 public:
     bool onLoad() override {
         std::cout << "MyPlugin loaded!" << std::endl;
@@ -67,8 +67,8 @@ public:
         return "MyPlugin";
     }
 
-    hotplug::Version getVersion() const override {
-        return hotplug::Version(1, 0, 0);
+    hotplugpp::Version getVersion() const override {
+        return hotplugpp::Version(1, 0, 0);
     }
 
     const char* getDescription() const override {
@@ -77,7 +77,7 @@ public:
 };
 
 // Export the plugin
-HOTPLUG_CREATE_PLUGIN(MyPlugin)
+HOTPLUGPP_CREATE_PLUGIN(MyPlugin)
 ```
 
 2. **Build as a shared library:**
@@ -90,10 +90,10 @@ target_include_directories(my_plugin PRIVATE ${CMAKE_SOURCE_DIR}/include)
 ### Using the Plugin Loader
 
 ```cpp
-#include "hotplug/PluginLoader.hpp"
+#include "hotplugpp/PluginLoader.hpp"
 
 int main() {
-    hotplug::PluginLoader loader;
+    hotplugpp::PluginLoader loader;
     
     // Load plugin
     if (!loader.loadPlugin("./libmy_plugin.so")) {
@@ -165,7 +165,7 @@ The `PluginLoader` class manages the plugin lifecycle:
 ```
 HotPlugPP/
 ├── include/
-│   └── hotplug/
+│   └── hotplugpp/
 │       ├── IPlugin.hpp          # Plugin interface
 │       └── PluginLoader.hpp     # Plugin loader
 ├── src/
@@ -193,7 +193,7 @@ loader.setReloadCallback([]() {
 ### Version Compatibility Checking
 
 ```cpp
-hotplug::Version required(1, 0, 0);
+hotplugpp::Version required(1, 0, 0);
 auto pluginVersion = plugin->getVersion();
 
 if (pluginVersion.isCompatible(required)) {
