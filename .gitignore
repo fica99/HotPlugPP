@@ -54,6 +54,8 @@ Makefile
 # But allow our formatting scripts
 !format-code.cmake
 !check-format.cmake
+!find-clang-format.cmake
+!find-source-files.cmake
 
 # IDE files
 .vscode/
