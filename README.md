@@ -38,6 +38,8 @@ cmake --build .
 ./bin/host_app ./bin/libsample_plugin.so
 ```
 
+For detailed build instructions, see [docs/BUILD.md](docs/BUILD.md).
+
 ### Creating Your First Plugin
 
 1. **Include the plugin interface:**
@@ -211,7 +213,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 See the `examples/` directory for:
 - `host_app.cpp` - Complete host application with hot-reload monitoring
-- `sample_plugin/SamplePlugin.cpp` - Example plugin implementation
+- `sample_plugin/SamplePlugin.cpp` - Simple plugin implementation
+- `math_plugin/MathPlugin.cpp` - Complex plugin with state management
 
 Run the example to see hot-reloading in action:
 
@@ -225,3 +228,22 @@ cmake --build . --target sample_plugin
 
 # Watch Terminal 1 to see the plugin hot-reload!
 ```
+
+## Documentation
+
+- **[README.md](README.md)** - Project overview and quick start
+- **[docs/BUILD.md](docs/BUILD.md)** - Detailed build instructions for all platforms
+- **[docs/API.md](docs/API.md)** - Complete API reference
+- **[docs/TUTORIAL.md](docs/TUTORIAL.md)** - Step-by-step plugin creation tutorial
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+Areas where contributions are especially welcome:
+- Additional example plugins
+- Platform-specific testing (macOS, Windows)
+- Multi-plugin support
+- Performance improvements
+- Documentation and tutorials
