@@ -61,3 +61,10 @@ Makefile
 *.swp
 *.swo
 *~
+
+# CodeQL files
+_codeql_detected_source_root
+.codeql/
+.codeql-cache/
+.codeql-cache-*/
+.codeql-cache-*/
