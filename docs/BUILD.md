@@ -1,6 +1,6 @@
-# Building HotPlug++
+# Building HotPlugPP
 
-This guide will help you build and use the HotPlug++ plugin system.
+This guide will help you build and use the HotPlugPP plugin system.
 
 ## Prerequisites
 

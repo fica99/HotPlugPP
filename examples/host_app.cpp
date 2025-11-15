@@ -17,7 +17,7 @@ void printUsage(const char* programName) {
 }
 
 int main(int argc, char* argv[]) {
-    std::cout << "=== HotPlug++ Example Host Application ===" << std::endl;
+    std::cout << "=== HotPlugPP Example Host Application ===" << std::endl;
     std::cout << std::endl;
 
     if (argc < 2) {

@@ -1,10 +1,10 @@
-# HotPlug++ Tutorial: Creating Your First Plugin
+# HotPlugPP Tutorial: Creating Your First Plugin
 
-This tutorial will guide you through creating a custom plugin for HotPlug++ from scratch.
+This tutorial will guide you through creating a custom plugin for HotPlugPP from scratch.
 
 ## Prerequisites
 
-- HotPlug++ built and working (see [BUILD.md](BUILD.md))
+- HotPlugPP built and working (see [BUILD.md](BUILD.md))
 - Basic C++ knowledge
 - Text editor or IDE
 
@@ -130,7 +130,7 @@ cd bin
 
 Expected output:
 ```
-=== HotPlug++ Example Host Application ===
+=== HotPlugPP Example Host Application ===
 
 Loading plugin from: ./libgreeter_plugin.so
 [GreeterPlugin] Instance created

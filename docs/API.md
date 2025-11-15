@@ -1,6 +1,6 @@
-# HotPlug++ API Reference
+# HotPlugPP API Reference
 
-Complete API documentation for the HotPlug++ plugin system.
+Complete API documentation for the HotPlugPP plugin system.
 
 ## Table of Contents
 

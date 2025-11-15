@@ -1,6 +1,6 @@
-# Contributing to HotPlug++
+# Contributing to HotPlugPP
 
-Thank you for considering contributing to HotPlug++! This document provides guidelines for contributing to the project.
+Thank you for considering contributing to HotPlugPP! This document provides guidelines for contributing to the project.
 
 ## Code of Conduct
 
@@ -199,4 +199,4 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 ## Recognition
 
-Contributors will be acknowledged in the project README. Thank you for helping make HotPlug++ better! 🎉
+Contributors will be acknowledged in the project README. Thank you for helping make HotPlugPP better! 🎉

@@ -46,7 +46,7 @@ public:
     }
 
     const char* getDescription() const override {
-        return "A simple example plugin demonstrating the HotPlug++ interface";
+        return "A simple example plugin demonstrating the HotPlugPP interface";
     }
 
 private:

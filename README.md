@@ -1,4 +1,4 @@
-# HotPlug++
+# HotPlugPP
 
 A lightweight, cross-platform plugin system in modern C++ with support for runtime dynamic loading and hot-reloading of shared libraries (.so/.dll).
 
@@ -72,7 +72,7 @@ public:
     }
 
     const char* getDescription() const override {
-        return "My first HotPlug++ plugin";
+        return "My first HotPlugPP plugin";
     }
 };
 
@@ -163,7 +163,7 @@ The `PluginLoader` class manages the plugin lifecycle:
 ## Project Structure
 
 ```
-HotPlug-/
+HotPlugPP/
 ├── include/
 │   └── hotplug/
 │       ├── IPlugin.hpp          # Plugin interface

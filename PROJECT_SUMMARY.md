@@ -1,8 +1,8 @@
-# HotPlug++ - Project Summary
+# HotPlugPP - Project Summary
 
 ## Overview
 
-HotPlug++ is a complete, production-ready plugin system for C++ with hot-reload capabilities.
+HotPlugPP is a complete, production-ready plugin system for C++ with hot-reload capabilities.
 
 ## What Was Built
 
@@ -139,4 +139,4 @@ Potential additions:
 
 ## Conclusion
 
-HotPlug++ provides a complete, well-documented, tested plugin system ready for integration into any C++ project requiring runtime extensibility.
+HotPlugPP provides a complete, well-documented, tested plugin system ready for integration into any C++ project requiring runtime extensibility.
