@@ -26,7 +26,7 @@ foreach(SOURCE_FILE ${ALL_SOURCE_FILES})
 endforeach()
 
 if(NEEDS_FORMATTING)
-    message(FATAL_ERROR "Some files need formatting. Run 'cmake -P format-code.cmake' to fix.")
+    message(FATAL_ERROR "Some files need formatting. Run 'cmake -P scripts/format-code.cmake' to fix.")
 else()
     message(STATUS "All files are properly formatted!")
 endif()
