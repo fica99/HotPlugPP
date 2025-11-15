@@ -82,7 +82,7 @@ The project uses **clang-format** to enforce consistent code style. A `.clang-fo
 
 Before submitting a pull request, format your code using one of these methods:
 
-**Option 1: Using the format script (cross-platform)**
+**Using the format script (cross-platform)**
 
 On Linux/macOS:
 ```bash
@@ -99,13 +99,7 @@ Or use CMake directly (works on all platforms):
 cmake -P format-code.cmake
 ```
 
-**Option 2: Using CMake target**
-```bash
-cd build
-cmake --build . --target format-code
-```
-
-**Option 3: Using clang-format directly**
+**Using clang-format directly**
 ```bash
 clang-format -i path/to/your/file.cpp
 ```
@@ -129,12 +123,6 @@ check-format.bat
 Or use CMake directly (works on all platforms):
 ```bash
 cmake -P check-format.cmake
-```
-
-**Using CMake target**
-```bash
-cd build
-cmake --build . --target check-format
 ```
 
 All pull requests must pass the formatting check.
