@@ -51,6 +51,11 @@ CMakeFiles/
 cmake_install.cmake
 Makefile
 *.cmake
+# But allow our formatting scripts
+!format-code.cmake
+!check-format.cmake
+!find-clang-format.cmake
+!find-source-files.cmake
 
 # IDE files
 .vscode/
@@ -58,3 +63,10 @@ Makefile
 *.swp
 *.swo
 *~
+
+# CodeQL files
+_codeql_detected_source_root
+.codeql/
+.codeql-cache/
+.codeql-cache-*/
+.codeql-cache-*/

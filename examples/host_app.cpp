@@ -1,8 +1,9 @@
 #include "hotplugpp/PluginLoader.hpp"
-#include <iostream>
-#include <thread>
+
 #include <chrono>
+#include <iostream>
 #include <string>
+#include <thread>
 
 void printUsage(const char* programName) {
     std::cout << "Usage: " << programName << " <plugin_path>" << std::endl;
@@ -46,23 +47,25 @@ int main(int argc, char* argv[]) {
 
     std::cout << std::endl;
     std::cout << "Plugin loaded successfully!" << std::endl;
-    
+
     hotplugpp::IPlugin* plugin = loader.getPlugin();
     if (plugin) {
         std::cout << "  Name: " << plugin->getName() << std::endl;
         std::cout << "  Version: " << plugin->getVersion().toString() << std::endl;
         std::cout << "  Description: " << plugin->getDescription() << std::endl;
     }
-    
+
     std::cout << std::endl;
     std::cout << "Starting update loop (hot-reload monitoring enabled)..." << std::endl;
-    std::cout << "You can modify and recompile the plugin to see hot-reload in action!" << std::endl;
+    std::cout << "You can modify and recompile the plugin to see hot-reload in action!"
+              << std::endl;
     std::cout << std::endl;
 
     // Main loop
     const float targetFPS = 60.0f;
     const float deltaTime = 1.0f / targetFPS;
-    const auto frameDuration = std::chrono::microseconds(static_cast<long long>(deltaTime * 1000000));
+    const auto frameDuration = std::chrono::microseconds(
+        static_cast<long long>(deltaTime * 1000000));
 
     int frameCount = 0;
     while (true) {
@@ -88,7 +91,7 @@ int main(int argc, char* argv[]) {
         auto frameEnd = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(frameEnd - frameStart);
         auto sleepTime = frameDuration - elapsed;
-        
+
         if (sleepTime.count() > 0) {
             std::this_thread::sleep_for(sleepTime);
         }
@@ -96,6 +99,6 @@ int main(int argc, char* argv[]) {
 
     std::cout << std::endl;
     std::cout << "Shutting down..." << std::endl;
-    
+
     return 0;
 }

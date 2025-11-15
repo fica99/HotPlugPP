@@ -1,17 +1,18 @@
 #include "hotplugpp/PluginLoader.hpp"
+
 #include <iostream>
+
 #include <sys/stat.h>
 
 #ifdef _WIN32
-    #include <windows.h>
+#include <windows.h>
 #else
-    #include <dlfcn.h>
+#include <dlfcn.h>
 #endif
 
 namespace hotplugpp {
 
-PluginLoader::PluginLoader() : m_reloadCallback(nullptr) {
-}
+PluginLoader::PluginLoader() : m_reloadCallback(nullptr) {}
 
 PluginLoader::~PluginLoader() {
     unloadPlugin();
@@ -69,8 +70,8 @@ bool PluginLoader::loadPlugin(const std::string& path) {
     m_pluginInfo.lastModified = getFileModificationTime(path);
     m_pluginInfo.isLoaded = true;
 
-    std::cout << "Plugin loaded successfully: " << plugin->getName() 
-              << " v" << plugin->getVersion().toString() << std::endl;
+    std::cout << "Plugin loaded successfully: " << plugin->getName() << " v"
+              << plugin->getVersion().toString() << std::endl;
 
     return true;
 }
@@ -83,7 +84,7 @@ void PluginLoader::unloadPlugin() {
     // Call plugin cleanup
     if (m_pluginInfo.instance) {
         m_pluginInfo.instance->onUnload();
-        
+
         // Destroy plugin instance
         if (m_pluginInfo.destroyFunc) {
             m_pluginInfo.destroyFunc(m_pluginInfo.instance);
@@ -108,14 +109,14 @@ bool PluginLoader::checkAndReload() {
     }
 
     auto currentModTime = getFileModificationTime(m_pluginInfo.path);
-    
+
     // Check if file has been modified
     if (currentModTime > m_pluginInfo.lastModified) {
         std::cout << "Plugin file modified, reloading..." << std::endl;
-        
+
         std::string path = m_pluginInfo.path;
         unloadPlugin();
-        
+
         if (loadPlugin(path)) {
             if (m_reloadCallback) {
                 m_reloadCallback();
@@ -145,7 +146,8 @@ void PluginLoader::setReloadCallback(std::function<void()> callback) {
     m_reloadCallback = callback;
 }
 
-std::chrono::system_clock::time_point PluginLoader::getFileModificationTime(const std::string& path) {
+std::chrono::system_clock::time_point
+PluginLoader::getFileModificationTime(const std::string& path) {
     struct stat statbuf;
     if (stat(path.c_str(), &statbuf) == 0) {
         return std::chrono::system_clock::from_time_t(statbuf.st_mtime);
@@ -162,8 +164,9 @@ LibraryHandle PluginLoader::loadLibrary(const std::string& path) {
 }
 
 void PluginLoader::unloadLibrary(LibraryHandle handle) {
-    if (!handle) return;
-    
+    if (!handle)
+        return;
+
 #ifdef _WIN32
     FreeLibrary(handle);
 #else
@@ -172,8 +175,9 @@ void PluginLoader::unloadLibrary(LibraryHandle handle) {
 }
 
 void* PluginLoader::getFunction(LibraryHandle handle, const std::string& name) {
-    if (!handle) return nullptr;
-    
+    if (!handle)
+        return nullptr;
+
 #ifdef _WIN32
     return reinterpret_cast<void*>(GetProcAddress(handle, name.c_str()));
 #else
@@ -184,14 +188,14 @@ void* PluginLoader::getFunction(LibraryHandle handle, const std::string& name) {
 std::string PluginLoader::getLastError() {
 #ifdef _WIN32
     DWORD error = GetLastError();
-    if (error == 0) return "No error";
-    
+    if (error == 0)
+        return "No error";
+
     LPSTR messageBuffer = nullptr;
     size_t size = FormatMessageA(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPSTR)&messageBuffer, 0, NULL);
-    
+        NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+
     std::string message(messageBuffer, size);
     LocalFree(messageBuffer);
     return message;

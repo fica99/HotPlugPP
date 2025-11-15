@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <cstdint>
+#include <string>
 
 namespace hotplugpp {
 
@@ -22,20 +22,18 @@ struct Version {
     }
 
     std::string toString() const {
-        return std::to_string(major) + "." + 
-               std::to_string(minor) + "." + 
-               std::to_string(patch);
+        return std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
     }
 };
 
 /**
  * @brief Base interface for all plugins
- * 
+ *
  * This interface defines the contract that all plugins must implement.
  * It provides lifecycle management and metadata access.
  */
 class IPlugin {
-public:
+  public:
     virtual ~IPlugin() = default;
 
     /**
@@ -78,17 +76,17 @@ public:
 
 // Plugin creation/destruction function types
 extern "C" {
-    typedef hotplugpp::IPlugin* (*CreatePluginFunc)();
-    typedef void (*DestroyPluginFunc)(hotplugpp::IPlugin*);
+typedef hotplugpp::IPlugin* (*CreatePluginFunc)();
+typedef void (*DestroyPluginFunc)(hotplugpp::IPlugin*);
 }
 
 // Macro to simplify plugin implementation
 #define HOTPLUGPP_PLUGIN_EXPORT extern "C"
 
 #ifdef _WIN32
-    #define HOTPLUGPP_API __declspec(dllexport)
+#define HOTPLUGPP_API __declspec(dllexport)
 #else
-    #define HOTPLUGPP_API __attribute__((visibility("default")))
+#define HOTPLUGPP_API __attribute__((visibility("default")))
 #endif
 
 // Convenience macro for plugin factory functions
