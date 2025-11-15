@@ -51,6 +51,9 @@ CMakeFiles/
 cmake_install.cmake
 Makefile
 *.cmake
+# But allow our formatting scripts
+!format-code.cmake
+!check-format.cmake
 
 # IDE files
 .vscode/
