@@ -205,10 +205,6 @@ if (pluginVersion.isCompatible(required)) {
 
 See [LICENSE](LICENSE) file for details.
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ## Examples
 
 See the `examples/` directory for:
