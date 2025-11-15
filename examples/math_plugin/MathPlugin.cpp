@@ -15,8 +15,7 @@ class MathPlugin : public hotplugpp::IPlugin {
 public:
     MathPlugin() 
         : m_frameCount(0)
-        , m_accumulatedTime(0.0f)
-        , m_fibIndex(0) {
+        , m_accumulatedTime(0.0f) {
     }
 
     ~MathPlugin() override = default;
@@ -102,7 +101,6 @@ private:
 
     uint64_t m_frameCount;
     float m_accumulatedTime;
-    size_t m_fibIndex;
     std::vector<uint64_t> m_fibonacci;
 };
 
