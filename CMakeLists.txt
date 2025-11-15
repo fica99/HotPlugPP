@@ -47,7 +47,7 @@ if(CLANG_FORMAT_EXECUTABLE)
 
     # Target to format code
     add_custom_target(format-code
-        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i -style=file ${ALL_SOURCE_FILES}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Formatting code with clang-format"
         VERBATIM
@@ -55,7 +55,7 @@ if(CLANG_FORMAT_EXECUTABLE)
 
     # Target to check code formatting
     add_custom_target(check-format
-        COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run --Werror ${ALL_SOURCE_FILES}
+        COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run --Werror -style=file ${ALL_SOURCE_FILES}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Checking code formatting with clang-format"
         VERBATIM

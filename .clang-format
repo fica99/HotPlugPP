@@ -79,10 +79,10 @@ IncludeCategories:
   # Other project headers
   - Regex:           '^"'
     Priority:        2
-  # System headers
-  - Regex:           '^<[^/]+>'
+  # C++ standard library headers (e.g., <iostream>, <vector>)
+  - Regex:           '^<[a-z_]+>'
     Priority:        3
-  # C++ standard library
+  # System headers (e.g., <windows.h>, <sys/stat.h>)
   - Regex:           '^<'
     Priority:        4
 
