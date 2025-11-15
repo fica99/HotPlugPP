@@ -1,10 +1,10 @@
-#include "hotplug/IPlugin.hpp"
+#include "hotplugpp/IPlugin.hpp"
 #include <iostream>
 
 /**
  * @brief A simple example plugin that demonstrates the plugin interface
  */
-class SamplePlugin : public hotplug::IPlugin {
+class SamplePlugin : public hotplugpp::IPlugin {
 public:
     SamplePlugin() : m_counter(0), m_totalTime(0.0f) {
         std::cout << "[SamplePlugin] Constructor called" << std::endl;
@@ -41,8 +41,8 @@ public:
         return "SamplePlugin";
     }
 
-    hotplug::Version getVersion() const override {
-        return hotplug::Version(1, 0, 0);
+    hotplugpp::Version getVersion() const override {
+        return hotplugpp::Version(1, 0, 0);
     }
 
     const char* getDescription() const override {
@@ -55,4 +55,4 @@ private:
 };
 
 // Use the convenience macro to create factory functions
-HOTPLUG_CREATE_PLUGIN(SamplePlugin)
+HOTPLUGPP_CREATE_PLUGIN(SamplePlugin)

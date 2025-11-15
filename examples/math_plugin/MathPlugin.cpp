@@ -1,4 +1,4 @@
-#include "hotplug/IPlugin.hpp"
+#include "hotplugpp/IPlugin.hpp"
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -11,7 +11,7 @@
  * - More complex update logic
  * - Resource management
  */
-class MathPlugin : public hotplug::IPlugin {
+class MathPlugin : public hotplugpp::IPlugin {
 public:
     MathPlugin() 
         : m_frameCount(0)
@@ -74,8 +74,8 @@ public:
         return "MathPlugin";
     }
 
-    hotplug::Version getVersion() const override {
-        return hotplug::Version(1, 0, 0);
+    hotplugpp::Version getVersion() const override {
+        return hotplugpp::Version(1, 0, 0);
     }
 
     const char* getDescription() const override {
@@ -107,4 +107,4 @@ private:
 };
 
 // Export the plugin
-HOTPLUG_CREATE_PLUGIN(MathPlugin)
+HOTPLUGPP_CREATE_PLUGIN(MathPlugin)

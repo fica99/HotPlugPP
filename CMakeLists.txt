@@ -13,9 +13,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Platform-specific settings
 if(WIN32)
-    add_definitions(-DHOTPLUG_PLATFORM_WINDOWS)
+    add_definitions(-DHOTPLUGPP_PLATFORM_WINDOWS)
 elseif(UNIX)
-    add_definitions(-DHOTPLUG_PLATFORM_UNIX)
+    add_definitions(-DHOTPLUGPP_PLATFORM_UNIX)
 endif()
 
 # Enable position independent code for shared libraries

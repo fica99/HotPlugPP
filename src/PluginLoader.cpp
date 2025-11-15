@@ -1,4 +1,4 @@
-#include "hotplug/PluginLoader.hpp"
+#include "hotplugpp/PluginLoader.hpp"
 #include <iostream>
 #include <sys/stat.h>
 
@@ -8,7 +8,7 @@
     #include <dlfcn.h>
 #endif
 
-namespace hotplug {
+namespace hotplugpp {
 
 PluginLoader::PluginLoader() : m_reloadCallback(nullptr) {
 }
@@ -201,4 +201,4 @@ std::string PluginLoader::getLastError() {
 #endif
 }
 
-} // namespace hotplug
+} // namespace hotplugpp

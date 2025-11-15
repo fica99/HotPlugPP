@@ -7,8 +7,8 @@ HotPlugPP is a complete, production-ready plugin system for C++ with hot-reload 
 ## What Was Built
 
 ### Core System (4 files)
-- `include/hotplug/IPlugin.hpp` - Plugin interface definition
-- `include/hotplug/PluginLoader.hpp` - Plugin loader header
+- `include/hotplugpp/IPlugin.hpp` - Plugin interface definition
+- `include/hotplugpp/PluginLoader.hpp` - Plugin loader header
 - `src/PluginLoader.cpp` - Plugin loader implementation
 - `src/CMakeLists.txt` - Core library build config
 

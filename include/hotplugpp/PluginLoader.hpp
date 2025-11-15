@@ -1,5 +1,4 @@
-#ifndef HOTPLUG_PLUGIN_LOADER_HPP
-#define HOTPLUG_PLUGIN_LOADER_HPP
+#pragma once
 
 #include "IPlugin.hpp"
 #include <string>
@@ -16,7 +15,7 @@
     typedef void* LibraryHandle;
 #endif
 
-namespace hotplug {
+namespace hotplugpp {
 
 /**
  * @brief Plugin metadata and handle
@@ -128,6 +127,4 @@ private:
     std::string getLastError();
 };
 
-} // namespace hotplug
-
-#endif // HOTPLUG_PLUGIN_LOADER_HPP
+} // namespace hotplugpp

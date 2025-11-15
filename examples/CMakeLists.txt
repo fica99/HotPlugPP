@@ -56,7 +56,7 @@ add_executable(host_app
 )
 
 target_link_libraries(host_app PRIVATE
-    hotplug
+    hotplugpp
 )
 
 # Copy plugins to output directory after build

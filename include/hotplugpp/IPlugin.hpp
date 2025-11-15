@@ -1,10 +1,9 @@
-#ifndef HOTPLUG_IPLUGIN_HPP
-#define HOTPLUG_IPLUGIN_HPP
+#pragma once
 
 #include <string>
 #include <cstdint>
 
-namespace hotplug {
+namespace hotplugpp {
 
 /**
  * @brief Version structure for plugin compatibility checking
@@ -75,30 +74,28 @@ public:
     virtual const char* getDescription() const = 0;
 };
 
-} // namespace hotplug
+} // namespace hotplugpp
 
 // Plugin creation/destruction function types
 extern "C" {
-    typedef hotplug::IPlugin* (*CreatePluginFunc)();
-    typedef void (*DestroyPluginFunc)(hotplug::IPlugin*);
+    typedef hotplugpp::IPlugin* (*CreatePluginFunc)();
+    typedef void (*DestroyPluginFunc)(hotplugpp::IPlugin*);
 }
 
 // Macro to simplify plugin implementation
-#define HOTPLUG_PLUGIN_EXPORT extern "C"
+#define HOTPLUGPP_PLUGIN_EXPORT extern "C"
 
 #ifdef _WIN32
-    #define HOTPLUG_API __declspec(dllexport)
+    #define HOTPLUGPP_API __declspec(dllexport)
 #else
-    #define HOTPLUG_API __attribute__((visibility("default")))
+    #define HOTPLUGPP_API __attribute__((visibility("default")))
 #endif
 
 // Convenience macro for plugin factory functions
-#define HOTPLUG_CREATE_PLUGIN(PluginClass) \
-    HOTPLUG_PLUGIN_EXPORT HOTPLUG_API hotplug::IPlugin* createPlugin() { \
+#define HOTPLUGPP_CREATE_PLUGIN(PluginClass) \
+    HOTPLUGPP_PLUGIN_EXPORT HOTPLUGPP_API hotplugpp::IPlugin* createPlugin() { \
         return new PluginClass(); \
     } \
-    HOTPLUG_PLUGIN_EXPORT HOTPLUG_API void destroyPlugin(hotplug::IPlugin* plugin) { \
+    HOTPLUGPP_PLUGIN_EXPORT HOTPLUGPP_API void destroyPlugin(hotplugpp::IPlugin* plugin) { \
         delete plugin; \
     }
-
-#endif // HOTPLUG_IPLUGIN_HPP

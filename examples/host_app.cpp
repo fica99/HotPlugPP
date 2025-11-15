@@ -1,4 +1,4 @@
-#include "hotplug/PluginLoader.hpp"
+#include "hotplugpp/PluginLoader.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     std::string pluginPath = argv[1];
 
     // Create plugin loader
-    hotplug::PluginLoader loader;
+    hotplugpp::PluginLoader loader;
 
     // Set up reload callback
     loader.setReloadCallback([]() {
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
     std::cout << "Plugin loaded successfully!" << std::endl;
     
-    hotplug::IPlugin* plugin = loader.getPlugin();
+    hotplugpp::IPlugin* plugin = loader.getPlugin();
     if (plugin) {
         std::cout << "  Name: " << plugin->getName() << std::endl;
         std::cout << "  Version: " << plugin->getVersion().toString() << std::endl;
