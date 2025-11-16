@@ -24,6 +24,35 @@ struct Version {
     std::string toString() const {
         return std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
     }
+
+    // Comparison operators for easier version checking
+    bool operator==(const Version& other) const {
+        return major == other.major && minor == other.minor && patch == other.patch;
+    }
+
+    bool operator!=(const Version& other) const {
+        return !(*this == other);
+    }
+
+    bool operator<(const Version& other) const {
+        if (major != other.major)
+            return major < other.major;
+        if (minor != other.minor)
+            return minor < other.minor;
+        return patch < other.patch;
+    }
+
+    bool operator>(const Version& other) const {
+        return other < *this;
+    }
+
+    bool operator<=(const Version& other) const {
+        return !(other < *this);
+    }
+
+    bool operator>=(const Version& other) const {
+        return !(*this < other);
+    }
 };
 
 /**
