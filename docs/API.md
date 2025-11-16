@@ -547,35 +547,22 @@ int main(int argc, char* argv[]) {
 
 ⚠️ **Warning:** The current implementation is **not thread-safe**.
 
-- Do not call `loadPlugin()`, `unloadPlugin()`, or `checkAndReload()` from multiple threads
-- Do not call plugin methods from multiple threads unless the plugin explicitly supports it
-- For multi-threaded applications, serialize access with mutexes
+- Do not call loader methods from multiple threads
+- Serialize access with mutexes for multi-threaded applications
 
 ---
 
 ## Performance Tips
 
-1. **Hot-reload checking frequency:**
-   - Don't check every frame
-   - Once per second is usually sufficient
-   - Adjust based on development workflow
-
-2. **Plugin initialization:**
-   - Keep `onLoad()` fast
-   - Defer heavy initialization to first `onUpdate()` if needed
-
-3. **Update performance:**
-   - `onUpdate()` is called frequently - keep it optimized
-   - Use profiling to identify bottlenecks
-
-4. **Memory:**
-   - Plugins share the host's heap
-   - Be careful with global variables in plugins
-   - Clean up completely in `onUnload()`
+1. **Hot-reload checking**: Once per second is usually sufficient
+2. **Plugin initialization**: Keep `onLoad()` fast
+3. **Update performance**: `onUpdate()` is called frequently - keep it optimized
+4. **Memory**: Plugins share the host's heap - clean up in `onUnload()`
 
 ---
 
-For more information, see:
-- [README.md](../README.md) - Overview and quick start
-- [BUILD.md](BUILD.md) - Building instructions
+For more information:
+- [README.md](../README.md) - Overview
+- [BUILD.md](BUILD.md) - Build instructions
+- [TUTORIAL.md](TUTORIAL.md) - Step-by-step guide
 - [examples/](../examples/) - Working examples

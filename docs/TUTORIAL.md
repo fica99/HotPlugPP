@@ -1,6 +1,6 @@
 # HotPlugPP Tutorial: Creating Your First Plugin
 
-This tutorial will guide you through creating a custom plugin for HotPlugPP from scratch.
+This tutorial guides you through creating a custom plugin for HotPlugPP from scratch.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ This tutorial will guide you through creating a custom plugin for HotPlugPP from
 
 ## Tutorial Overview
 
-We'll create a simple "Greeter Plugin" that:
+We'll create a "Greeter Plugin" that:
 1. Greets the user on load
 2. Counts updates
 3. Says goodbye on unload
@@ -234,7 +234,7 @@ bool onLoad() override {
 }
 
 void onUnload() override {
-    delete m_texture;  // Always clean up
+    delete m_texture;
     m_texture = nullptr;
 }
 ```
@@ -246,23 +246,16 @@ void onUpdate(float deltaTime) override {
     // Good: Fast operation
     m_position += m_velocity * deltaTime;
     
-    // Bad: Slow operation every frame
-    // loadTextureFromDisk("file.png");  // Don't do this!
+    // Bad: Don't do expensive operations every frame
 }
 ```
 
 ### 3. Handle Hot-Reload Gracefully
 
-Remember that hot-reload will:
-- Call `onUnload()` on the old instance
-- Destroy the old instance
-- Create a new instance
-- Call `onLoad()` on the new instance
-
-State is NOT preserved across reloads. If you need persistent state, consider:
-- Saving to a file in `onUnload()`
-- Loading from a file in `onLoad()`
-- Using a separate state manager in the host application
+State is NOT preserved across reloads. If you need persistent state:
+- Save to a file in `onUnload()`
+- Load from a file in `onLoad()`
+- Use a separate state manager in the host application
 
 ### 4. Version Your Plugins
 
@@ -273,74 +266,32 @@ hotplugpp::Version getVersion() const override {
 ```
 
 Increment:
-- **Major**: Breaking changes to plugin interface
+- **Major**: Breaking changes
 - **Minor**: New features, backwards compatible
 - **Patch**: Bug fixes
 
-### 5. Error Handling
+## Troubleshooting
 
-```cpp
-bool onLoad() override {
-    if (!initializeSubsystemA()) {
-        std::cerr << "[MyPlugin] Failed to init subsystem A" << std::endl;
-        return false;  // Abort loading
-    }
-    
-    if (!initializeSubsystemB()) {
-        std::cerr << "[MyPlugin] Failed to init subsystem B" << std::endl;
-        cleanupSubsystemA();  // Clean up what we started
-        return false;
-    }
-    
-    return true;
-}
-```
+### Plugin doesn't load
+- Check file path is correct
+- Verify file has execute permissions
+- Ensure all dependencies are available
 
-## Common Issues and Solutions
-
-### Issue: Plugin doesn't load
-
-**Error:** "Failed to load library"
-
-**Solution:** Check that:
-- File path is correct
-- File has execute permissions (`chmod +x`)
-- All dependencies are available
-
-### Issue: "Failed to find plugin factory functions"
-
-**Error:** "Failed to find plugin factory functions"
-
-**Solution:** Make sure you included:
+### "Failed to find plugin factory functions"
+Make sure you included:
 ```cpp
 HOTPLUGPP_CREATE_PLUGIN(YourPluginClassName)
 ```
 
-### Issue: Hot-reload doesn't work
-
-**Symptoms:** Plugin file changes but nothing happens
-
-**Solution:** 
-- Ensure the file was actually rebuilt (check timestamp)
-- Check that `checkAndReload()` is being called
-- Verify the plugin file isn't locked by another process
+### Hot-reload doesn't work
+- Ensure file was actually rebuilt
+- Verify `checkAndReload()` is being called
+- Check plugin file isn't locked by another process
 
 ## Next Steps
 
-Now that you've created your first plugin, you can:
+- Explore the examples: `sample_plugin` and `math_plugin`
+- Read [API.md](API.md) for complete interface documentation
+- Build something real!
 
-1. **Explore the examples**: Look at `sample_plugin` and `math_plugin` for more patterns
-2. **Read the API docs**: See [API.md](API.md) for complete interface documentation
-3. **Build something real**: Create plugins for your application!
-
-## Example Projects
-
-Here are some ideas for practice plugins:
-
-1. **Logger Plugin**: Logs messages to a file with timestamps
-2. **Stats Plugin**: Tracks and displays performance metrics
-3. **Config Plugin**: Loads and manages configuration from JSON/XML
-4. **Audio Plugin**: Plays sounds or music
-5. **Network Plugin**: Handles network communication
-
-Happy plugin development! 🔌✨
+Happy plugin development! 🔌

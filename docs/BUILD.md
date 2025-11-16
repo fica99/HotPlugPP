@@ -1,6 +1,6 @@
 # Building HotPlugPP
 
-This guide will help you build and use the HotPlugPP plugin system.
+Detailed build instructions for all platforms.
 
 ## Prerequisites
 
@@ -139,12 +139,13 @@ target_link_libraries(your_target PRIVATE hotplugpp)
 ### Option 2: Install and Use
 
 ```bash
-# Build and install
 cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
 cmake --build .
 sudo cmake --install .
+```
 
+```cmake
 # In your CMakeLists.txt
 find_package(HotPlugPP REQUIRED)
 target_link_libraries(your_target PRIVATE hotplugpp)
@@ -152,14 +153,13 @@ target_link_libraries(your_target PRIVATE hotplugpp)
 
 ### Option 3: Header-Only Integration
 
-Just copy the `include/` directory to your project and include the headers. Note that you'll need to compile `PluginLoader.cpp` as part of your build.
+Copy the `include/` directory to your project and compile `src/PluginLoader.cpp`.
 
 ## Troubleshooting
 
 ### Linux: "cannot open shared object file"
 
-Make sure the plugin path is correct or add the directory to `LD_LIBRARY_PATH`:
-
+Set `LD_LIBRARY_PATH`:
 ```bash
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./lib
 ./bin/host_app ./lib/libsample_plugin.so
@@ -171,8 +171,7 @@ Ensure all DLLs are in the same directory as the executable or in your PATH.
 
 ### macOS: "dyld: Library not loaded"
 
-Set the runtime library path:
-
+Set runtime library path:
 ```bash
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:./lib
 ./bin/host_app ./lib/libsample_plugin.dylib
@@ -180,69 +179,13 @@ export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:./lib
 
 ### CMake Error: "Could not find a configuration file"
 
-Make sure you're using CMake 3.15 or higher:
-
+Verify CMake version:
 ```bash
-cmake --version
+cmake --version  # Should be 3.15+
 ```
-
-## Running Tests
-
-Currently, the project includes example applications that serve as integration tests. To verify everything works:
-
-```bash
-cd build/bin
-./host_app ./libsample_plugin.so
-
-# You should see:
-# - Plugin loading successfully
-# - Regular update messages
-# - Can test hot-reload by modifying and rebuilding the plugin
-```
-
-## Creating Your Own Plugin
-
-1. Create a new plugin source file:
-
-```cpp
-// MyPlugin.cpp
-#include "hotplugpp/IPlugin.hpp"
-
-class MyPlugin : public hotplugpp::IPlugin {
-    // Implement interface...
-};
-
-HOTPLUGPP_CREATE_PLUGIN(MyPlugin)
-```
-
-2. Add to CMakeLists.txt:
-
-```cmake
-add_library(my_plugin SHARED MyPlugin.cpp)
-target_include_directories(my_plugin PRIVATE ${CMAKE_SOURCE_DIR}/include)
-```
-
-3. Build:
-
-```bash
-cmake --build . --target my_plugin
-```
-
-4. Load in your application:
-
-```cpp
-hotplugpp::PluginLoader loader;
-loader.loadPlugin("./libmy_plugin.so");
-```
-
-## Performance Considerations
-
-- **Hot-Reload Frequency**: By default, the example checks for plugin changes every second (60 frames at 60 FPS). Adjust based on your needs.
-- **Plugin Loading**: Initial load is relatively slow (ms range), but subsequent updates are fast.
-- **Memory**: Each plugin instance uses minimal memory overhead beyond your plugin's own allocations.
 
 ## Next Steps
 
-- Read the [API Reference](API.md) for detailed interface documentation
-- Check out [examples/](../examples/) for more usage patterns
-- See [README.md](../README.md) for feature overview
+- See [TUTORIAL.md](TUTORIAL.md) for creating your first plugin
+- See [API.md](API.md) for complete API documentation
+- Check out [../examples/](../examples/) for usage examples
