@@ -65,11 +65,11 @@ See [docs/API.md](docs/API.md) for complete API documentation.
 
 ## Platform Support
 
-| Platform | Library Extension | Status |
-|----------|------------------|---------|
-| Linux    | .so              | ✅ Tested |
-| Windows  | .dll             | ✅ Supported |
-| macOS    | .dylib           | ✅ Supported |
+| Platform | Library Extension |    Status     |
+|----------|-------------------|---------------|
+| Linux    | .so               | ✅ Supported |
+| Windows  | .dll              | ✅ Supported |
+| macOS    | .dylib            | ✅ Supported |
 
 ## Requirements
 
