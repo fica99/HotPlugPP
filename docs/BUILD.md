@@ -145,8 +145,9 @@ cmake --build .
 sudo cmake --install .
 ```
 
+After installing HotPlugPP, add the following to your project's `CMakeLists.txt` to link against the library:
+
 ```cmake
-# In your CMakeLists.txt
 find_package(HotPlugPP REQUIRED)
 target_link_libraries(your_target PRIVATE hotplugpp)
 ```

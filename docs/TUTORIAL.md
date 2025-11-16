@@ -252,7 +252,14 @@ void onUpdate(float deltaTime) override {
 
 ### 3. Handle Hot-Reload Gracefully
 
-State is NOT preserved across reloads. If you need persistent state:
+State is NOT preserved across reloads. 
+
+**Why?** During hot-reload, HotPlugPP will:
+- Call `onUnload()` on the old plugin instance
+- Destroy the old instance
+- Create a new instance and call `onLoad()`
+
+This means any in-memory state is lost. If you need persistent state:
 - Save to a file in `onUnload()`
 - Load from a file in `onLoad()`
 - Use a separate state manager in the host application
@@ -269,6 +276,25 @@ Increment:
 - **Major**: Breaking changes
 - **Minor**: New features, backwards compatible
 - **Patch**: Bug fixes
+
+### 5. Error Handling
+
+```cpp
+bool onLoad() override {
+    if (!initializeSubsystemA()) {
+        std::cerr << "[MyPlugin] Failed to init subsystem A" << std::endl;
+        return false;  // Abort loading
+    }
+    
+    if (!initializeSubsystemB()) {
+        std::cerr << "[MyPlugin] Failed to init subsystem B" << std::endl;
+        cleanupSubsystemA();  // Clean up what we started
+        return false;
+    }
+    
+    return true;
+}
+```
 
 ## Troubleshooting
 
