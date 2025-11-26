@@ -4,7 +4,7 @@ This tutorial guides you through creating a custom plugin for HotPlugPP from scr
 
 ## Prerequisites
 
-- HotPlugPP built and working (see [BUILD.md](BUILD.md))
+- HotPlugPP built and working (see [[Build Instructions|BUILD]])
 - Basic C++ knowledge
 - Text editor or IDE
 
@@ -182,47 +182,6 @@ Plugin loaded successfully: GreeterPlugin v1.0.0
 
 Congratulations! You've created your first hot-reloadable plugin!
 
-## Advanced: Adding State Management
-
-Let's enhance the plugin to keep custom state:
-
-```cpp
-class GreeterPlugin : public hotplugpp::IPlugin {
-public:
-    GreeterPlugin() : m_updateCount(0), m_totalTime(0.0f) {}
-
-    bool onLoad() override {
-        std::cout << "[GreeterPlugin] Hello! Starting fresh." << std::endl;
-        // State is reset on reload
-        m_updateCount = 0;
-        m_totalTime = 0.0f;
-        return true;
-    }
-
-    void onUpdate(float deltaTime) override {
-        m_updateCount++;
-        m_totalTime += deltaTime;
-        
-        if (m_updateCount % 120 == 0) {
-            std::cout << "[GreeterPlugin] Update #" << m_updateCount 
-                      << " (running for " << m_totalTime << "s)" << std::endl;
-        }
-    }
-
-    void onUnload() override {
-        std::cout << "[GreeterPlugin] Goodbye! Stats:" << std::endl;
-        std::cout << "  Updates: " << m_updateCount << std::endl;
-        std::cout << "  Runtime: " << m_totalTime << "s" << std::endl;
-    }
-
-    // ... rest of the implementation
-
-private:
-    int m_updateCount;
-    float m_totalTime;
-};
-```
-
 ## Best Practices
 
 ### 1. Initialize in onLoad(), Clean up in onUnload()
@@ -252,7 +211,7 @@ void onUpdate(float deltaTime) override {
 
 ### 3. Handle Hot-Reload Gracefully
 
-State is NOT preserved across reloads. 
+State is NOT preserved across reloads.
 
 **Why?** During hot-reload, HotPlugPP will:
 - Call `onUnload()` on the old plugin instance
@@ -317,7 +276,7 @@ HOTPLUGPP_CREATE_PLUGIN(YourPluginClassName)
 ## Next Steps
 
 - Explore the examples: `sample_plugin` and `math_plugin`
-- Read [API.md](API.md) for complete interface documentation
+- Read [[API Reference|API]] for complete interface documentation
 - Build something real!
 
 Happy plugin development! 🔌

@@ -27,7 +27,7 @@ See [docs/BUILD.md](docs/BUILD.md) for detailed build instructions and platform-
 ## Creating a Plugin
 
 ```cpp
-#include "hotplugpp/IPlugin.hpp"
+#include "hotplugpp/i_plugin.hpp"
 
 class MyPlugin : public hotplugpp::IPlugin {
 public:
@@ -47,7 +47,7 @@ See [docs/TUTORIAL.md](docs/TUTORIAL.md) for a complete step-by-step guide.
 ## Using the Plugin Loader
 
 ```cpp
-#include "hotplugpp/PluginLoader.hpp"
+#include "hotplugpp/plugin_loader.hpp"
 
 int main() {
     hotplugpp::PluginLoader loader;
@@ -81,6 +81,8 @@ See [docs/API.md](docs/API.md) for complete API documentation.
 - C++17 compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
 
 ## Documentation
+
+📖 **[Wiki](../../wiki)** — Full documentation
 
 - **[BUILD.md](docs/BUILD.md)** - Detailed build instructions for all platforms
 - **[TUTORIAL.md](docs/TUTORIAL.md)** - Step-by-step plugin creation guide
