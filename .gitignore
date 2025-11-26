@@ -66,6 +66,7 @@ Makefile
 
 # CodeQL files
 _codeql_detected_source_root
+_codeql_build_dir/
 .codeql/
 .codeql-cache/
 .codeql-cache-*/
