@@ -19,5 +19,4 @@ jobs:
     
     - name: Check file naming convention
       run: |
-        chmod +x ./scripts/check-file-naming.sh
-        ./scripts/check-file-naming.sh
+        bash ./scripts/check-file-naming.sh
