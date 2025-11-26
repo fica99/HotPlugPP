@@ -238,15 +238,15 @@ bool PluginLoader::checkAndReload() {
 }
 
 IPlugin* PluginLoader::getPlugin() const {
-    return m_pluginInfo->instance;
+    return m_pluginInfo ? m_pluginInfo->instance : nullptr;
 }
 
 bool PluginLoader::isLoaded() const {
-    return m_pluginInfo->isLoaded && m_pluginInfo->instance != nullptr;
+    return m_pluginInfo && m_pluginInfo->isLoaded && m_pluginInfo->instance != nullptr;
 }
 
 std::string PluginLoader::getPluginPath() const {
-    return m_pluginInfo->path;
+    return m_pluginInfo ? m_pluginInfo->path : std::string();
 }
 
 void PluginLoader::setReloadCallback(std::function<void()> callback) {
