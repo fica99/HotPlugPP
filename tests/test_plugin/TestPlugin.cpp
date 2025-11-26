@@ -7,7 +7,7 @@
  */
 class TestPlugin : public hotplugpp::IPlugin {
   public:
-    TestPlugin() : m_loadCalled(false), m_unloadCalled(false), m_updateCount(0) {}
+    TestPlugin() : m_loadCalled(false), m_unloadCalled(false), m_updateCount(0), m_lastDeltaTime(0.0f) {}
 
     ~TestPlugin() override = default;
 
