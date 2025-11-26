@@ -22,7 +22,7 @@ cmake .. && cmake --build .
 ./bin/host_app ./bin/libsample_plugin.so
 ```
 
-See [Wiki](../../wiki) for detailed build instructions and platform-specific guidance.
+See [Wiki](https://github.com/fica99/HotPlugPP/wiki) for detailed build instructions and platform-specific guidance.
 
 ## Creating a Plugin
 
@@ -42,7 +42,7 @@ public:
 HOTPLUGPP_CREATE_PLUGIN(MyPlugin)
 ```
 
-See [Wiki](../../wiki) for a complete step-by-step guide.
+See [Wiki](https://github.com/fica99/HotPlugPP/wiki) for a complete step-by-step guide.
 
 ## Using the Plugin Loader
 
@@ -65,7 +65,7 @@ int main() {
 }
 ```
 
-See [Wiki](../../wiki) for complete API documentation.
+See [Wiki](https://github.com/fica99/HotPlugPP/wiki) for complete API documentation.
 
 ## Platform Support
 
@@ -82,7 +82,7 @@ See [Wiki](../../wiki) for complete API documentation.
 
 ## Documentation
 
-📖 **[Wiki](../../wiki)** — Full documentation including API reference, build instructions, and tutorials
+📖 **[Wiki](https://github.com/fica99/HotPlugPP/wiki)** — Full documentation including API reference, build instructions, and tutorials
 
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
 
