@@ -22,7 +22,7 @@ cmake .. && cmake --build .
 ./bin/host_app ./bin/libsample_plugin.so
 ```
 
-See [docs/BUILD.md](docs/BUILD.md) for detailed build instructions and platform-specific guidance.
+See [Wiki](../../wiki) for detailed build instructions and platform-specific guidance.
 
 ## Creating a Plugin
 
@@ -42,7 +42,7 @@ public:
 HOTPLUGPP_CREATE_PLUGIN(MyPlugin)
 ```
 
-See [docs/TUTORIAL.md](docs/TUTORIAL.md) for a complete step-by-step guide.
+See [Wiki](../../wiki) for a complete step-by-step guide.
 
 ## Using the Plugin Loader
 
@@ -65,7 +65,7 @@ int main() {
 }
 ```
 
-See [docs/API.md](docs/API.md) for complete API documentation.
+See [Wiki](../../wiki) for complete API documentation.
 
 ## Platform Support
 
@@ -82,11 +82,8 @@ See [docs/API.md](docs/API.md) for complete API documentation.
 
 ## Documentation
 
-📖 **[Wiki](../../wiki)** — Full documentation
+📖 **[Wiki](../../wiki)** — Full documentation including API reference, build instructions, and tutorials
 
-- **[BUILD.md](docs/BUILD.md)** - Detailed build instructions for all platforms
-- **[TUTORIAL.md](docs/TUTORIAL.md)** - Step-by-step plugin creation guide
-- **[API.md](docs/API.md)** - Complete API reference
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
 
 ## Examples
