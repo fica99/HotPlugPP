@@ -179,8 +179,7 @@ cmake --build .
 
 - **Code comments**: Document public APIs
 - **README**: Update if adding major features
-- **API docs**: Update API.md for interface changes
-- **Tutorials**: Add examples for new features
+- **Wiki**: Update Wiki for interface changes or new features
 
 ## Commit Messages
 
