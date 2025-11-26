@@ -30,9 +30,7 @@ struct Version {
         return major == other.major && minor == other.minor && patch == other.patch;
     }
 
-    bool operator!=(const Version& other) const {
-        return !(*this == other);
-    }
+    bool operator!=(const Version& other) const { return !(*this == other); }
 
     bool operator<(const Version& other) const {
         if (major != other.major)
@@ -42,17 +40,11 @@ struct Version {
         return patch < other.patch;
     }
 
-    bool operator>(const Version& other) const {
-        return other < *this;
-    }
+    bool operator>(const Version& other) const { return other < *this; }
 
-    bool operator<=(const Version& other) const {
-        return !(other < *this);
-    }
+    bool operator<=(const Version& other) const { return !(other < *this); }
 
-    bool operator>=(const Version& other) const {
-        return !(*this < other);
-    }
+    bool operator>=(const Version& other) const { return !(*this < other); }
 };
 
 /**

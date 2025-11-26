@@ -26,7 +26,7 @@ endif()
 
 # Test plugin for integration tests
 add_library(test_plugin SHARED
-    test_plugin/TestPlugin.cpp
+    test_plugin/test_plugin.cpp
 )
 target_include_directories(test_plugin PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -40,7 +40,7 @@ set_target_properties(test_plugin PROPERTIES
 
 # Failing test plugin (onLoad returns false)
 add_library(failing_plugin SHARED
-    test_plugin/FailingPlugin.cpp
+    test_plugin/failing_plugin.cpp
 )
 target_include_directories(failing_plugin PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -54,7 +54,7 @@ set_target_properties(failing_plugin PROPERTIES
 
 # Version tests
 add_executable(version_tests
-    VersionTests.cpp
+    version_tests.cpp
 )
 target_link_libraries(version_tests PRIVATE
     GTest::gtest_main
@@ -64,7 +64,7 @@ gtest_discover_tests(version_tests)
 
 # PluginLoader tests
 add_executable(plugin_loader_tests
-    PluginLoaderTests.cpp
+    plugin_loader_tests.cpp
 )
 target_link_libraries(plugin_loader_tests PRIVATE
     GTest::gtest_main
@@ -80,7 +80,7 @@ gtest_discover_tests(plugin_loader_tests)
 
 # IPlugin interface tests
 add_executable(iplugin_tests
-    IPluginTests.cpp
+    i_plugin_tests.cpp
 )
 target_link_libraries(iplugin_tests PRIVATE
     GTest::gtest_main
@@ -90,7 +90,7 @@ gtest_discover_tests(iplugin_tests)
 
 # Integration tests
 add_executable(integration_tests
-    IntegrationTests.cpp
+    integration_tests.cpp
 )
 target_link_libraries(integration_tests PRIVATE
     GTest::gtest_main

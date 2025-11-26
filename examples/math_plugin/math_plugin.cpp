@@ -1,7 +1,9 @@
 #include "hotplugpp/i_plugin.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 /**
@@ -80,17 +82,18 @@ class MathPlugin : public hotplugpp::IPlugin {
         if (m_fibonacci.size() < 2)
             return;
 
-        uint64_t next = m_fibonacci[m_fibonacci.size() - 1] + m_fibonacci[m_fibonacci.size() - 2];
+        uint64_t a = m_fibonacci[m_fibonacci.size() - 2];
+        uint64_t b = m_fibonacci[m_fibonacci.size() - 1];
 
-        // Prevent overflow by limiting sequence length
-        if (next < m_fibonacci.back()) {
+        // Check for overflow before computing next value
+        if (b > std::numeric_limits<uint64_t>::max() - a) {
             std::cout << "[MathPlugin] Fibonacci sequence overflow detected, resetting..."
                       << std::endl;
             m_fibonacci.clear();
             m_fibonacci.push_back(0);
             m_fibonacci.push_back(1);
         } else {
-            m_fibonacci.push_back(next);
+            m_fibonacci.push_back(a + b);
         }
     }
 

@@ -17,6 +17,11 @@ if(WIN32)
     set_target_properties(sample_plugin PROPERTIES
         SUFFIX ".dll"
     )
+elseif(APPLE)
+    set_target_properties(sample_plugin PROPERTIES
+        PREFIX "lib"
+        SUFFIX ".dylib"
+    )
 else()
     set_target_properties(sample_plugin PROPERTIES
         PREFIX "lib"
@@ -42,6 +47,11 @@ set_target_properties(math_plugin PROPERTIES
 if(WIN32)
     set_target_properties(math_plugin PROPERTIES
         SUFFIX ".dll"
+    )
+elseif(APPLE)
+    set_target_properties(math_plugin PROPERTIES
+        PREFIX "lib"
+        SUFFIX ".dylib"
     )
 else()
     set_target_properties(math_plugin PROPERTIES
