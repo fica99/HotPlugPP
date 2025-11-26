@@ -33,20 +33,17 @@ Logger& Logger::instance() {
     return instance;
 }
 
-Logger::Logger() : m_level(LogLevel::Info) {
+Logger::Logger()
+#ifdef NDEBUG
+    : m_level(LogLevel::Warn)
+#else
+    : m_level(LogLevel::Debug)
+#endif
+{
     // Create console logger with colors
     m_logger = spdlog::stdout_color_mt("hotplugpp");
     m_logger->set_pattern("[%H:%M:%S.%e] [%n] [%^%l%$] %v");
-
-#ifdef NDEBUG
-    // In Release builds, default to warning level
-    m_logger->set_level(spdlog::level::warn);
-    m_level = LogLevel::Warn;
-#else
-    // In Debug builds, default to debug level
-    m_logger->set_level(spdlog::level::debug);
-    m_level = LogLevel::Debug;
-#endif
+    m_logger->set_level(toSpdlogLevel(m_level));
 }
 
 Logger::~Logger() {

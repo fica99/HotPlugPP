@@ -108,6 +108,9 @@ class Logger {
 
 // Convenience macros for logging
 // In Release builds without HOTPLUGPP_ENABLE_LOGGING, these become no-ops
+// Note: Logger::instance() uses Meyers' singleton pattern which is thread-safe
+// and well-optimized by modern compilers. The singleton access overhead is
+// negligible compared to actual logging operations.
 
 #if defined(NDEBUG) && !defined(HOTPLUGPP_ENABLE_LOGGING)
 // Release build without explicit logging enabled - no-ops

@@ -141,7 +141,8 @@ TEST_F(LoggerTest, EmptyMessage) {
 }
 
 TEST_F(LoggerTest, LongMessage) {
-    std::string longMsg(10000, 'x');
+    constexpr size_t kLongMessageLength = 10000;
+    std::string longMsg(kLongMessageLength, 'x');
     EXPECT_NO_THROW(Logger::instance().info(longMsg));
 }
 
