@@ -113,21 +113,48 @@ class Logger {
 // negligible compared to actual logging operations.
 
 #if defined(NDEBUG) && !defined(HOTPLUGPP_ENABLE_LOGGING)
-// Release build without explicit logging enabled - no-ops
+// Release build without explicit logging enabled - no-ops for trace/debug/info
 #define HOTPLUGPP_LOG_TRACE(msg) ((void)0)
 #define HOTPLUGPP_LOG_DEBUG(msg) ((void)0)
 #define HOTPLUGPP_LOG_INFO(msg) ((void)0)
-#define HOTPLUGPP_LOG_WARN(msg) ::hotplugpp::Logger::instance().warn(msg)
-#define HOTPLUGPP_LOG_ERROR(msg) ::hotplugpp::Logger::instance().error(msg)
-#define HOTPLUGPP_LOG_CRITICAL(msg) ::hotplugpp::Logger::instance().critical(msg)
+#define HOTPLUGPP_LOG_WARN(msg) do { \
+    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Warn) \
+        ::hotplugpp::Logger::instance().warn(msg); \
+} while(0)
+#define HOTPLUGPP_LOG_ERROR(msg) do { \
+    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Error) \
+        ::hotplugpp::Logger::instance().error(msg); \
+} while(0)
+#define HOTPLUGPP_LOG_CRITICAL(msg) do { \
+    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Critical) \
+        ::hotplugpp::Logger::instance().critical(msg); \
+} while(0)
 #else
 // Debug build or explicit logging enabled
-#define HOTPLUGPP_LOG_TRACE(msg) ::hotplugpp::Logger::instance().trace(msg)
-#define HOTPLUGPP_LOG_DEBUG(msg) ::hotplugpp::Logger::instance().debug(msg)
-#define HOTPLUGPP_LOG_INFO(msg) ::hotplugpp::Logger::instance().info(msg)
-#define HOTPLUGPP_LOG_WARN(msg) ::hotplugpp::Logger::instance().warn(msg)
-#define HOTPLUGPP_LOG_ERROR(msg) ::hotplugpp::Logger::instance().error(msg)
-#define HOTPLUGPP_LOG_CRITICAL(msg) ::hotplugpp::Logger::instance().critical(msg)
+#define HOTPLUGPP_LOG_TRACE(msg) do { \
+    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Trace) \
+        ::hotplugpp::Logger::instance().trace(msg); \
+} while(0)
+#define HOTPLUGPP_LOG_DEBUG(msg) do { \
+    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Debug) \
+        ::hotplugpp::Logger::instance().debug(msg); \
+} while(0)
+#define HOTPLUGPP_LOG_INFO(msg) do { \
+    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Info) \
+        ::hotplugpp::Logger::instance().info(msg); \
+} while(0)
+#define HOTPLUGPP_LOG_WARN(msg) do { \
+    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Warn) \
+        ::hotplugpp::Logger::instance().warn(msg); \
+} while(0)
+#define HOTPLUGPP_LOG_ERROR(msg) do { \
+    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Error) \
+        ::hotplugpp::Logger::instance().error(msg); \
+} while(0)
+#define HOTPLUGPP_LOG_CRITICAL(msg) do { \
+    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Critical) \
+        ::hotplugpp::Logger::instance().critical(msg); \
+} while(0)
 #endif
 
 } // namespace hotplugpp

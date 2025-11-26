@@ -1,6 +1,7 @@
 #include "hotplugpp/plugin_loader.hpp"
 #include "hotplugpp/logger.hpp"
 
+#include <spdlog/fmt/fmt.h>
 #include <utility>
 
 #ifdef _WIN32
@@ -28,8 +29,8 @@ bool PluginLoader::loadPlugin(const std::string& path) {
     // Load the shared library
     LibraryHandle handle = loadLibrary(path);
     if (!handle) {
-        HOTPLUGPP_LOG_ERROR("Failed to load library: " + path);
-        HOTPLUGPP_LOG_ERROR("Error: " + getLastError());
+        HOTPLUGPP_LOG_ERROR(fmt::format("Failed to load library: {}", path));
+        HOTPLUGPP_LOG_ERROR(fmt::format("Error: {}", getLastError()));
         return false;
     }
 
@@ -40,8 +41,8 @@ bool PluginLoader::loadPlugin(const std::string& path) {
         getFunction(handle, "destroyPlugin"));
 
     if (!createFunc || !destroyFunc) {
-        HOTPLUGPP_LOG_ERROR("Failed to find plugin factory functions in: " + path);
-        HOTPLUGPP_LOG_ERROR("Error: " + getLastError());
+        HOTPLUGPP_LOG_ERROR(fmt::format("Failed to find plugin factory functions in: {}", path));
+        HOTPLUGPP_LOG_ERROR(fmt::format("Error: {}", getLastError()));
         unloadLibrary(handle);
         return false;
     }
@@ -49,14 +50,14 @@ bool PluginLoader::loadPlugin(const std::string& path) {
     // Create plugin instance
     IPlugin* plugin = createFunc();
     if (!plugin) {
-        HOTPLUGPP_LOG_ERROR("Failed to create plugin instance from: " + path);
+        HOTPLUGPP_LOG_ERROR(fmt::format("Failed to create plugin instance from: {}", path));
         unloadLibrary(handle);
         return false;
     }
 
     // Initialize plugin
     if (!plugin->onLoad()) {
-        HOTPLUGPP_LOG_ERROR("Plugin initialization failed: " + path);
+        HOTPLUGPP_LOG_ERROR(fmt::format("Plugin initialization failed: {}", path));
         destroyFunc(plugin);
         unloadLibrary(handle);
         return false;
@@ -71,8 +72,8 @@ bool PluginLoader::loadPlugin(const std::string& path) {
     m_pluginInfo.lastModified = getFileModificationTime(path);
     m_pluginInfo.isLoaded = true;
 
-    HOTPLUGPP_LOG_INFO("Plugin loaded successfully: " + std::string(plugin->getName()) + " v" +
-                       plugin->getVersion().toString());
+    HOTPLUGPP_LOG_INFO(fmt::format("Plugin loaded successfully: {} v{}", plugin->getName(),
+                                   plugin->getVersion().toString()));
 
     return true;
 }
@@ -124,7 +125,7 @@ bool PluginLoader::checkAndReload() {
             }
             return true;
         } else {
-            HOTPLUGPP_LOG_ERROR("Failed to reload plugin: " + path);
+            HOTPLUGPP_LOG_ERROR(fmt::format("Failed to reload plugin: {}", path));
         }
     }
 

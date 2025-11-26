@@ -40,8 +40,11 @@ Logger::Logger()
     : m_level(LogLevel::Debug)
 #endif
 {
-    // Create console logger with colors
-    m_logger = spdlog::stdout_color_mt("hotplugpp");
+    // Create or get console logger with colors
+    m_logger = spdlog::get("hotplugpp");
+    if (!m_logger) {
+        m_logger = spdlog::stdout_color_mt("hotplugpp");
+    }
     m_logger->set_pattern("[%H:%M:%S.%e] [%n] [%^%l%$] %v");
     m_logger->set_level(toSpdlogLevel(m_level));
 }
