@@ -1,18 +1,18 @@
-## 📖 Навигация
+## 📖 Navigation
 
-**[[🏠 Главная|Home]]**
+**[[🏠 Home|Home]]**
 
-### Начало работы
-- [[📦 Сборка|BUILD]]
-- [[📝 Туториал|TUTORIAL]]
+### Getting Started
+- [[📦 Build|BUILD]]
+- [[📝 Tutorial|TUTORIAL]]
 
-### Справочник
+### Reference
 - [[📚 API Reference|API]]
 - [[🤝 Contributing|CONTRIBUTING]]
 
 ---
 
-### Ссылки
-- [📁 Репозиторий](https://github.com/fica99/HotPlugPP)
+### Links
+- [📁 Repository](https://github.com/fica99/HotPlugPP)
 - [🐛 Issues](https://github.com/fica99/HotPlugPP/issues)
 - [🔀 Pull Requests](https://github.com/fica99/HotPlugPP/pulls)

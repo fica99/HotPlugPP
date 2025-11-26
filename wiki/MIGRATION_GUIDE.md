@@ -1,113 +1,97 @@
-# Миграция документации в GitHub Wiki
+# Migrating Documentation to GitHub Wiki
 
-Этот документ содержит инструкции по переносу документации в GitHub Wiki.
+This document contains instructions for transferring documentation to GitHub Wiki.
 
-## Файлы для Wiki
+## Files for Wiki
 
-В директории `wiki/` подготовлены следующие файлы:
+The `wiki/` directory contains the following files:
 
-| Файл | Описание |
-|------|----------|
-| `Home.md` | Главная страница Wiki |
-| `_Sidebar.md` | Боковая панель навигации |
-| `API.md` | Полный справочник API |
-| `BUILD.md` | Инструкции по сборке |
-| `TUTORIAL.md` | Пошаговое руководство |
-| `CONTRIBUTING.md` | Руководство для контрибьюторов |
+| File | Description |
+|------|-------------|
+| `Home.md` | Wiki landing page |
+| `_Sidebar.md` | Navigation sidebar |
+| `API.md` | Complete API reference |
+| `BUILD.md` | Build instructions |
+| `TUTORIAL.md` | Step-by-step guide |
+| `CONTRIBUTING.md` | Contribution guidelines |
 
-## Шаги по миграции
+## Migration Steps
 
-### Способ 1: Через веб-интерфейс GitHub
+### Method 1: Via GitHub Web Interface
 
-1. Перейдите на страницу репозитория на GitHub
-2. Нажмите на вкладку **Wiki**
-3. Нажмите **Create the first page** (если Wiki пуст) или **New Page**
-4. Для каждого файла из `wiki/`:
-   - Создайте страницу с соответствующим именем (без расширения .md)
-   - Скопируйте содержимое файла
-   - Нажмите **Save Page**
+1. Navigate to the repository on GitHub
+2. Click on the **Wiki** tab
+3. Click **Create the first page** (if Wiki is empty) or **New Page**
+4. For each file in `wiki/`:
+   - Create a page with the corresponding name (without .md extension)
+   - Copy the file contents
+   - Click **Save Page**
 
-### Способ 2: Через git (рекомендуется)
+### Method 2: Via git (Recommended)
 
-GitHub Wiki — это отдельный git-репозиторий. Вы можете клонировать его и push'ить изменения:
+GitHub Wiki is a separate git repository. You can clone it and push changes:
 
 ```bash
-# Клонируйте Wiki репозиторий
+# Clone the Wiki repository
 git clone https://github.com/fica99/HotPlugPP.wiki.git
 
-# Скопируйте файлы
+# Copy files
 cd HotPlugPP.wiki
 cp ../HotPlugPP/wiki/* .
 
-# Добавьте и закоммитьте
+# Add and commit
 git add .
-git commit -m "Миграция документации в Wiki"
+git commit -m "Migrate documentation to Wiki"
 
-# Push в Wiki
+# Push to Wiki
 git push origin master
 ```
 
-> **Примечание:** Wiki репозиторий будет доступен после создания первой страницы через веб-интерфейс.
+> **Note:** The Wiki repository becomes available after creating the first page via the web interface.
 
-## Порядок создания страниц
+## Page Creation Order
 
-Рекомендуемый порядок:
+Recommended order:
 
-1. `Home` — Главная страница (обязательно первой)
-2. `_Sidebar` — Боковая панель навигации
-3. `BUILD` — Инструкции по сборке
-4. `TUTORIAL` — Туториал
+1. `Home` — Landing page (must be first)
+2. `_Sidebar` — Navigation sidebar
+3. `BUILD` — Build instructions
+4. `TUTORIAL` — Tutorial
 5. `API` — API Reference
-6. `CONTRIBUTING` — Руководство контрибьютора
+6. `CONTRIBUTING` — Contributor guidelines
 
-## Обновление README.md
+## Updating README.md
 
-После миграции рекомендуется обновить ссылки в README.md репозитория для указания на Wiki:
+After migration, consider updating links in the repository's README.md to point to Wiki:
 
 ```markdown
-## Документация
+## Documentation
 
-- 📖 **[Wiki](../../wiki)** — Полная документация
-- 📦 **[Сборка](../../wiki/BUILD)** — Инструкции по сборке
-- 📝 **[Туториал](../../wiki/TUTORIAL)** — Создание первого плагина
-- 📚 **[API Reference](../../wiki/API)** — Справочник API
-- 🤝 **[Contributing](../../wiki/CONTRIBUTING)** — Руководство контрибьютора
+- 📖 **[Wiki](../../wiki)** — Full documentation
+- 📦 **[Build](../../wiki/BUILD)** — Build instructions
+- 📝 **[Tutorial](../../wiki/TUTORIAL)** — Creating your first plugin
+- 📚 **[API Reference](../../wiki/API)** — API documentation
+- 🤝 **[Contributing](../../wiki/CONTRIBUTING)** — Contributor guidelines
 ```
 
-## Преимущества Wiki
+## Post-Migration Checklist
 
-- ✅ Удобная навигация с боковой панелью
-- ✅ Поиск по всем страницам
-- ✅ История изменений каждой страницы
-- ✅ Любой участник с доступом на запись может редактировать
-- ✅ Поддержка Markdown
-- ✅ Автоматические ссылки между страницами
+After migration, verify:
 
-## Проверка после миграции
+1. ✅ All pages are created
+2. ✅ Sidebar is displayed
+3. ✅ Links between pages work
+4. ✅ Code formatting displays correctly
+5. ✅ Tables render properly
 
-После переноса проверьте:
+## Documentation Improvements Made
 
-1. ✅ Все страницы созданы
-2. ✅ Боковая панель отображается
-3. ✅ Ссылки между страницами работают
-4. ✅ Форматирование кода отображается правильно
-5. ✅ Таблицы отображаются корректно
+During Wiki preparation, the following improvements were made:
 
-## Внесённые улучшения в документацию
-
-При подготовке Wiki были исправлены и улучшены:
-
-1. **Исправлены имена файлов заголовков**:
+1. **Fixed header file names in examples**:
    - `IPlugin.hpp` → `i_plugin.hpp`
    - `PluginLoader.hpp` → `plugin_loader.hpp`
 
-2. **Добавлена русская локализация** для удобства использования
+2. **Updated wiki links** to use GitHub Wiki syntax
 
-3. **Добавлены недостающие детали API**:
-   - Структура `PluginInfo`
-   - Операторы сравнения для `Version`
-   - Макрос `HOTPLUGPP_PLUGIN_EXPORT`
-
-4. **Улучшена навигация** с ссылками между страницами
-
-5. **Добавлены эмодзи** для визуального выделения разделов
+3. **Streamlined content** to focus on stable API elements

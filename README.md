@@ -82,7 +82,7 @@ See [docs/API.md](docs/API.md) for complete API documentation.
 
 ## Documentation
 
-📖 **[Wiki](../../wiki)** — Full documentation in Russian
+📖 **[Wiki](../../wiki)** — Full documentation
 
 - **[BUILD.md](docs/BUILD.md)** - Detailed build instructions for all platforms
 - **[TUTORIAL.md](docs/TUTORIAL.md)** - Step-by-step plugin creation guide

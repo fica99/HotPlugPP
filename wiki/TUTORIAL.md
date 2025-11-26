@@ -1,23 +1,23 @@
-# Туториал: Создание первого плагина
+# HotPlugPP Tutorial: Creating Your First Plugin
 
-Это руководство проведёт вас через создание собственного плагина для HotPlugPP с нуля.
+This tutorial guides you through creating a custom plugin for HotPlugPP from scratch.
 
-## Требования
+## Prerequisites
 
-- HotPlugPP собран и работает (см. [[Сборка|BUILD]])
-- Базовые знания C++
-- Текстовый редактор или IDE
+- HotPlugPP built and working (see [[Build Instructions|BUILD]])
+- Basic C++ knowledge
+- Text editor or IDE
 
-## Обзор туториала
+## Tutorial Overview
 
-Мы создадим "Greeter Plugin", который:
-1. Приветствует пользователя при загрузке
-2. Подсчитывает обновления
-3. Прощается при выгрузке
+We'll create a "Greeter Plugin" that:
+1. Greets the user on load
+2. Counts updates
+3. Says goodbye on unload
 
-## Шаг 1: Создание исходного файла плагина
+## Step 1: Create Plugin Source File
 
-Создайте новый файл `examples/greeter_plugin/GreeterPlugin.cpp`:
+Create a new file `examples/greeter_plugin/GreeterPlugin.cpp`:
 
 ```cpp
 #include "hotplugpp/i_plugin.hpp"
@@ -27,30 +27,30 @@
 class GreeterPlugin : public hotplugpp::IPlugin {
 public:
     GreeterPlugin() : m_updateCount(0) {
-        std::cout << "[GreeterPlugin] Экземпляр создан" << std::endl;
+        std::cout << "[GreeterPlugin] Instance created" << std::endl;
     }
 
     ~GreeterPlugin() override {
-        std::cout << "[GreeterPlugin] Экземпляр уничтожен" << std::endl;
+        std::cout << "[GreeterPlugin] Instance destroyed" << std::endl;
     }
 
     bool onLoad() override {
-        std::cout << "[GreeterPlugin] Привет! Я загружаюсь." << std::endl;
+        std::cout << "[GreeterPlugin] Hello! I'm loading now." << std::endl;
         m_updateCount = 0;
         return true;
     }
 
     void onUnload() override {
-        std::cout << "[GreeterPlugin] Пока! Я обновился " 
-                  << m_updateCount << " раз." << std::endl;
+        std::cout << "[GreeterPlugin] Goodbye! I was updated " 
+                  << m_updateCount << " times." << std::endl;
     }
 
     void onUpdate(float deltaTime) override {
         m_updateCount++;
         
-        // Вывод каждые 120 кадров (каждые 2 секунды при 60 FPS)
+        // Print every 120 frames (every 2 seconds at 60 FPS)
         if (m_updateCount % 120 == 0) {
-            std::cout << "[GreeterPlugin] Всё ещё здесь! Обновление #" 
+            std::cout << "[GreeterPlugin] Still here! Update #" 
                       << m_updateCount << std::endl;
         }
     }
@@ -64,22 +64,20 @@ public:
     }
 
     const char* getDescription() const override {
-        return "Дружелюбный плагин, который приветствует вас";
+        return "A friendly plugin that greets you";
     }
 
 private:
     int m_updateCount;
 };
 
-// Экспорт плагина - это обязательно!
+// Export the plugin - this is required!
 HOTPLUGPP_CREATE_PLUGIN(GreeterPlugin)
 ```
 
-> **Важно:** Обратите внимание на правильное имя заголовочного файла: `hotplugpp/i_plugin.hpp` (в snake_case).
+## Step 2: Add to Build System
 
-## Шаг 2: Добавление в систему сборки
-
-Отредактируйте `examples/CMakeLists.txt` и добавьте:
+Edit `examples/CMakeLists.txt` and add:
 
 ```cmake
 # Greeter Plugin
@@ -106,133 +104,92 @@ add_custom_command(TARGET greeter_plugin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         $<TARGET_FILE:greeter_plugin>
         ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<TARGET_FILE_NAME:greeter_plugin>
-    COMMENT "Копирование greeter_plugin в директорию bin"
+    COMMENT "Copying greeter_plugin to bin directory"
 )
 ```
 
-## Шаг 3: Сборка плагина
+## Step 3: Build Your Plugin
 
 ```bash
 cd build
 cmake --build . --target greeter_plugin
 ```
 
-Вы должны увидеть вывод:
+You should see output like:
 ```
 [100%] Built target greeter_plugin
 Copying greeter_plugin to bin directory
 ```
 
-## Шаг 4: Запуск плагина
+## Step 4: Run Your Plugin
 
 ```bash
 cd bin
 ./host_app ./libgreeter_plugin.so
 ```
 
-Ожидаемый вывод:
+Expected output:
 ```
 === HotPlugPP Example Host Application ===
 
 Loading plugin from: ./libgreeter_plugin.so
-[GreeterPlugin] Экземпляр создан
-[GreeterPlugin] Привет! Я загружаюсь.
+[GreeterPlugin] Instance created
+[GreeterPlugin] Hello! I'm loading now.
 Plugin loaded successfully: GreeterPlugin v1.0.0
 
 Plugin loaded successfully!
   Name: GreeterPlugin
   Version: 1.0.0
-  Description: Дружелюбный плагин, который приветствует вас
+  Description: A friendly plugin that greets you
 
 Starting update loop (hot-reload monitoring enabled)...
 You can modify and recompile the plugin to see hot-reload in action!
 
-[GreeterPlugin] Всё ещё здесь! Обновление #120
-[GreeterPlugin] Всё ещё здесь! Обновление #240
+[GreeterPlugin] Still here! Update #120
+[GreeterPlugin] Still here! Update #240
 ```
 
-## Шаг 5: Тестирование горячей перезагрузки
+## Step 5: Test Hot-Reload
 
-Оставьте host_app работающим, затем в другом терминале:
+Keep the host app running, then in another terminal:
 
-1. **Отредактируйте плагин** — измените сообщение приветствия:
+1. **Edit the plugin** - Change the greeting message:
 ```cpp
 bool onLoad() override {
-    std::cout << "[GreeterPlugin] Привет снова! Я был перезагружен!" << std::endl;
+    std::cout << "[GreeterPlugin] Hello again! I've been reloaded!" << std::endl;
     m_updateCount = 0;
     return true;
 }
 ```
 
-2. **Пересоберите только плагин**:
+2. **Rebuild just the plugin**:
 ```bash
 cd build
 cmake --build . --target greeter_plugin
 ```
 
-3. **Наблюдайте за терминалом host_app** — вы должны увидеть:
+3. **Watch the host app terminal** - You should see:
 ```
-[GreeterPlugin] Пока! Я обновился XXX раз.
-[GreeterPlugin] Экземпляр уничтожен
+[GreeterPlugin] Goodbye! I was updated XXX times.
+[GreeterPlugin] Instance destroyed
 Plugin file modified, reloading...
-[GreeterPlugin] Экземпляр создан
-[GreeterPlugin] Привет снова! Я был перезагружен!
+[GreeterPlugin] Instance created
+[GreeterPlugin] Hello again! I've been reloaded!
 Plugin loaded successfully: GreeterPlugin v1.0.0
 
 *** Plugin has been reloaded! ***
 ```
 
-Поздравляем! Вы создали свой первый плагин с горячей перезагрузкой!
+Congratulations! You've created your first hot-reloadable plugin!
 
-## Продвинутый пример: Управление состоянием
+## Best Practices
 
-Давайте улучшим плагин, добавив отслеживание состояния:
-
-```cpp
-class GreeterPlugin : public hotplugpp::IPlugin {
-public:
-    GreeterPlugin() : m_updateCount(0), m_totalTime(0.0f) {}
-
-    bool onLoad() override {
-        std::cout << "[GreeterPlugin] Привет! Начинаем с чистого листа." << std::endl;
-        // Состояние сбрасывается при перезагрузке
-        m_updateCount = 0;
-        m_totalTime = 0.0f;
-        return true;
-    }
-
-    void onUpdate(float deltaTime) override {
-        m_updateCount++;
-        m_totalTime += deltaTime;
-        
-        if (m_updateCount % 120 == 0) {
-            std::cout << "[GreeterPlugin] Обновление #" << m_updateCount 
-                      << " (работает " << m_totalTime << " сек)" << std::endl;
-        }
-    }
-
-    void onUnload() override {
-        std::cout << "[GreeterPlugin] Пока! Статистика:" << std::endl;
-        std::cout << "  Обновлений: " << m_updateCount << std::endl;
-        std::cout << "  Время работы: " << m_totalTime << " сек" << std::endl;
-    }
-
-    // ... остальная реализация
-
-private:
-    int m_updateCount;
-    float m_totalTime;
-};
-```
-
-## Лучшие практики
-
-### 1. Инициализация в onLoad(), очистка в onUnload()
+### 1. Initialize in onLoad(), Clean up in onUnload()
 
 ```cpp
 bool onLoad() override {
     m_texture = loadTexture("texture.png");
-    return m_texture != nullptr;  // Вернуть false при ошибке
+    return m_texture != nullptr;  // Return false if init fails
 }
 
 void onUnload() override {
@@ -241,32 +198,32 @@ void onUnload() override {
 }
 ```
 
-### 2. Держите onUpdate() быстрым
+### 2. Keep onUpdate() Fast
 
 ```cpp
 void onUpdate(float deltaTime) override {
-    // Хорошо: быстрая операция
+    // Good: Fast operation
     m_position += m_velocity * deltaTime;
     
-    // Плохо: не выполняйте тяжёлые операции каждый кадр
+    // Bad: Don't do expensive operations every frame
 }
 ```
 
-### 3. Обрабатывайте горячую перезагрузку корректно
+### 3. Handle Hot-Reload Gracefully
 
-Состояние **НЕ** сохраняется между перезагрузками.
+State is NOT preserved across reloads.
 
-**Почему?** Во время горячей перезагрузки HotPlugPP:
-- Вызывает `onUnload()` на старом экземпляре плагина
-- Уничтожает старый экземпляр
-- Создаёт новый экземпляр и вызывает `onLoad()`
+**Why?** During hot-reload, HotPlugPP will:
+- Call `onUnload()` on the old plugin instance
+- Destroy the old instance
+- Create a new instance and call `onLoad()`
 
-Это означает, что любое состояние в памяти теряется. Если вам нужно сохранить состояние:
-- Сохраняйте в файл в `onUnload()`
-- Загружайте из файла в `onLoad()`
-- Используйте отдельный менеджер состояния в хост-приложении
+This means any in-memory state is lost. If you need persistent state:
+- Save to a file in `onUnload()`
+- Load from a file in `onLoad()`
+- Use a separate state manager in the host application
 
-### 4. Версионирование плагинов
+### 4. Version Your Plugins
 
 ```cpp
 hotplugpp::Version getVersion() const override {
@@ -274,23 +231,23 @@ hotplugpp::Version getVersion() const override {
 }
 ```
 
-Увеличивайте:
-- **Major**: несовместимые изменения
-- **Minor**: новые функции, обратная совместимость
-- **Patch**: исправления ошибок
+Increment:
+- **Major**: Breaking changes
+- **Minor**: New features, backwards compatible
+- **Patch**: Bug fixes
 
-### 5. Обработка ошибок
+### 5. Error Handling
 
 ```cpp
 bool onLoad() override {
     if (!initializeSubsystemA()) {
-        std::cerr << "[MyPlugin] Не удалось инициализировать подсистему A" << std::endl;
-        return false;  // Прервать загрузку
+        std::cerr << "[MyPlugin] Failed to init subsystem A" << std::endl;
+        return false;  // Abort loading
     }
     
     if (!initializeSubsystemB()) {
-        std::cerr << "[MyPlugin] Не удалось инициализировать подсистему B" << std::endl;
-        cleanupSubsystemA();  // Очистить то, что начали
+        std::cerr << "[MyPlugin] Failed to init subsystem B" << std::endl;
+        cleanupSubsystemA();  // Clean up what we started
         return false;
     }
     
@@ -298,28 +255,28 @@ bool onLoad() override {
 }
 ```
 
-## Устранение неполадок
+## Troubleshooting
 
-### Плагин не загружается
-- Проверьте правильность пути к файлу
-- Убедитесь, что файл имеет права на выполнение
-- Проверьте наличие всех зависимостей
+### Plugin doesn't load
+- Check file path is correct
+- Verify file has execute permissions
+- Ensure all dependencies are available
 
 ### "Failed to find plugin factory functions"
-Убедитесь, что вы добавили:
+Make sure you included:
 ```cpp
 HOTPLUGPP_CREATE_PLUGIN(YourPluginClassName)
 ```
 
-### Горячая перезагрузка не работает
-- Убедитесь, что файл действительно был пересобран
-- Проверьте, что `checkAndReload()` вызывается
-- Убедитесь, что файл плагина не заблокирован другим процессом
+### Hot-reload doesn't work
+- Ensure file was actually rebuilt
+- Verify `checkAndReload()` is being called
+- Check plugin file isn't locked by another process
 
-## Следующие шаги
+## Next Steps
 
-- Изучите примеры: `sample_plugin` и `math_plugin`
-- Прочитайте [[API Reference|API]] для полной документации интерфейсов
-- Создайте что-нибудь реальное!
+- Explore the examples: `sample_plugin` and `math_plugin`
+- Read [[API Reference|API]] for complete interface documentation
+- Build something real!
 
-Удачной разработки плагинов! 🔌
+Happy plugin development! 🔌

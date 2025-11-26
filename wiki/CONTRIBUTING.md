@@ -1,145 +1,145 @@
-# Руководство для контрибьюторов
+# Contributing to HotPlugPP
 
-Спасибо за интерес к участию в развитии HotPlugPP! Этот документ содержит рекомендации по внесению вклада в проект.
+Thank you for considering contributing to HotPlugPP! This document provides guidelines for contributing to the project.
 
-## Кодекс поведения
+## Code of Conduct
 
-- Будьте уважительны и конструктивны
-- Фокусируйтесь на том, что лучше для сообщества
-- Проявляйте эмпатию к другим участникам
+- Be respectful and constructive
+- Focus on what is best for the community
+- Show empathy towards other contributors
 
-## Как внести вклад
+## How to Contribute
 
-### Сообщения об ошибках
+### Reporting Bugs
 
-Перед созданием отчёта об ошибке, пожалуйста, проверьте существующие issues, чтобы избежать дублирования. При создании отчёта укажите:
+Before creating bug reports, please check existing issues to avoid duplicates. When creating a bug report, include:
 
-- **Чёткий заголовок и описание**
-- **Шаги для воспроизведения** проблемы
-- **Ожидаемое поведение** vs **фактическое поведение**
-- **Детали окружения**: ОС, версия компилятора, версия CMake
-- **Примеры кода** при необходимости
+- **Clear title and description**
+- **Steps to reproduce** the issue
+- **Expected behavior** vs **actual behavior**
+- **Environment details**: OS, compiler version, CMake version
+- **Code samples** if applicable
 
-### Предложения улучшений
+### Suggesting Enhancements
 
-Предложения улучшений отслеживаются как GitHub issues. При создании предложения укажите:
+Enhancement suggestions are tracked as GitHub issues. When creating an enhancement suggestion, include:
 
-- **Чёткий заголовок и описание**
-- **Сценарий использования** — зачем нужно это улучшение?
-- **Предлагаемое решение** — как бы вы это реализовали?
-- **Рассмотренные альтернативы**
+- **Clear title and description**
+- **Use case** - why is this enhancement needed?
+- **Proposed solution** - how would you implement it?
+- **Alternatives considered**
 
 ### Pull Requests
 
-1. **Сделайте форк репозитория** и создайте ветку от `main`
-2. **Внесите изменения**, следуя стандартам кодирования
-3. **Тщательно протестируйте** ваши изменения
-4. **Обновите документацию** при необходимости
-5. **Отправьте pull request**
+1. **Fork the repository** and create your branch from `main`
+2. **Make your changes** following the coding standards
+3. **Test your changes** thoroughly
+4. **Update documentation** if needed
+5. **Submit a pull request**
 
-## Настройка среды разработки
+## Development Setup
 
 ```bash
-# Клонируйте ваш форк
+# Clone your fork
 git clone https://github.com/YOUR_USERNAME/HotPlugPP.git
 cd HotPlugPP
 
-# Создайте директорию сборки
+# Create a build directory
 mkdir build && cd build
 
-# Сконфигурируйте и соберите
+# Configure and build
 cmake ..
 cmake --build .
 
-# Протестируйте ваши изменения
+# Test your changes
 ./bin/host_app ./bin/libsample_plugin.so
 ```
 
-## Стандарты кодирования
+## Coding Standards
 
-### Стиль C++
+### C++ Style
 
-- **Стандарт C++**: C++17 или новее
-- **Соглашения об именовании**:
-  - Классы: `PascalCase` (например, `PluginLoader`)
-  - Функции: `camelCase` (например, `loadPlugin`)
-  - Переменные-члены: `m_camelCase` (например, `m_pluginInfo`)
-  - Константы: `UPPER_CASE` (например, `MAX_PLUGINS`)
-- **Форматирование**:
-  - Отступы: 4 пробела (не табы)
-  - Фигурные скобки: открывающая скобка на той же строке
-  - Длина строки: желательно < 100 символов
-- **Комментарии**:
-  - Используйте `///` для документационных комментариев
-  - Объясняйте "почему", а не "что"
-  - Поддерживайте комментарии актуальными
+- **C++ Standard**: C++17 or newer
+- **Naming Conventions**:
+  - Classes: `PascalCase` (e.g., `PluginLoader`)
+  - Functions: `camelCase` (e.g., `loadPlugin`)
+  - Member variables: `m_camelCase` (e.g., `m_pluginInfo`)
+  - Constants: `UPPER_CASE` (e.g., `MAX_PLUGINS`)
+- **Formatting**:
+  - Indentation: 4 spaces (no tabs)
+  - Braces: Opening brace on same line
+  - Line length: Prefer < 100 characters
+- **Comments**:
+  - Use `///` for documentation comments
+  - Explain "why", not "what"
+  - Keep comments up to date
 
-### Форматирование кода
+### Code Formatting
 
-Проект использует **clang-format** для обеспечения единообразного стиля кода. Файл конфигурации `.clang-format` находится в корне репозитория.
+The project uses **clang-format** to enforce consistent code style. A `.clang-format` configuration file is provided in the repository root.
 
-#### Форматирование вашего кода
+#### Formatting Your Code
 
-Перед отправкой pull request отформатируйте код одним из способов:
+Before submitting a pull request, format your code using one of these methods:
 
-**Использование скрипта форматирования (кроссплатформенно)**
+**Using the format script (cross-platform)**
 
-На Linux/macOS:
+On Linux/macOS:
 ```bash
 ./scripts/format-code.sh
 ```
 
-На Windows:
+On Windows:
 ```cmd
 scripts\format-code.bat
 ```
 
-Или используйте CMake напрямую (работает на всех платформах):
+Or use CMake directly (works on all platforms):
 ```bash
 cmake -P scripts/format-code.cmake
 ```
 
-**Использование clang-format напрямую**
+**Using clang-format directly**
 ```bash
 clang-format -i path/to/your/file.cpp
 ```
 
-#### Проверка форматирования кода
+#### Checking Code Formatting
 
-Чтобы проверить соответствие стилю без изменения файлов:
+To check if your code follows the style guidelines without modifying files:
 
-**Использование скрипта проверки (кроссплатформенно)**
+**Using the check script (cross-platform)**
 
-На Linux/macOS:
+On Linux/macOS:
 ```bash
 ./scripts/check-format.sh
 ```
 
-На Windows:
+On Windows:
 ```cmd
 scripts\check-format.bat
 ```
 
-Или используйте CMake напрямую (работает на всех платформах):
+Or use CMake directly (works on all platforms):
 ```bash
 cmake -P scripts/check-format.cmake
 ```
 
-Все pull requests должны проходить проверку форматирования.
+All pull requests must pass the formatting check.
 
-### Пример
+### Example
 
 ```cpp
 class PluginManager {
 public:
-    /// Загружает плагин из указанного пути
-    /// @param path Путь к библиотеке плагина
-    /// @return true при успехе, false иначе
+    /// Load a plugin from the specified path
+    /// @param path Path to the plugin library
+    /// @return true if successful, false otherwise
     bool loadPlugin(const std::string& path) {
         if (path.empty()) {
             return false;
         }
-        // Реализация...
+        // Implementation...
     }
 
 private:
@@ -148,108 +148,108 @@ private:
 };
 ```
 
-## Тестирование
+## Testing
 
-- **Тесты сборки**: Убедитесь, что проект собирается на Linux, Windows и macOS
-- **Тесты времени выполнения**: Тестируйте загрузку, выгрузку и горячую перезагрузку плагинов
-- **Граничные случаи**: Тестируйте условия ошибок и граничные случаи
-- **Память**: Проверяйте утечки памяти с помощью valgrind или аналогичных инструментов
+- **Build tests**: Ensure the project builds on Linux, Windows, and macOS
+- **Runtime tests**: Test plugin loading, unloading, and hot-reloading
+- **Edge cases**: Test error conditions and edge cases
+- **Memory**: Check for memory leaks with valgrind or similar tools
 
-### Запуск тестов
+### Running Tests
 
 ```bash
-# Сборка и запуск примеров
+# Build and run examples
 cd build
 cmake --build .
 
-# Тест sample plugin
+# Test sample plugin
 ./bin/host_app ./bin/libsample_plugin.so
 
-# Тест math plugin
+# Test math plugin
 ./bin/host_app ./bin/libmath_plugin.so
 
-# Тест горячей перезагрузки
-# 1. Запустите host_app с плагином
-# 2. Измените исходный код плагина
-# 3. Пересоберите плагин
-# 4. Убедитесь, что горячая перезагрузка произошла
+# Test hot-reload
+# 1. Start host_app with a plugin
+# 2. Modify the plugin source
+# 3. Rebuild the plugin
+# 4. Verify hot-reload occurs
 ```
 
-## Документация
+## Documentation
 
-- **Комментарии в коде**: Документируйте публичные API
-- **README**: Обновляйте при добавлении крупных функций
-- **API docs**: Обновляйте API.md при изменении интерфейсов
-- **Туториалы**: Добавляйте примеры для новых функций
+- **Code comments**: Document public APIs
+- **README**: Update if adding major features
+- **API docs**: Update API.md for interface changes
+- **Tutorials**: Add examples for new features
 
-## Сообщения коммитов
+## Commit Messages
 
-Пишите чёткие, описательные сообщения коммитов:
+Write clear, descriptive commit messages:
 
 ```
-Добавление функции callback для горячей перезагрузки
+Add hot-reload callback feature
 
-- Добавлен метод setReloadCallback() в PluginLoader
-- Вызов callback после успешной горячей перезагрузки
-- Обновление документации и примеров
-- Добавление теста вызова callback
+- Add setReloadCallback() method to PluginLoader
+- Call callback after successful hot-reload
+- Update documentation and examples
+- Add test for callback invocation
 ```
 
-Формат:
-- Первая строка: краткое резюме (50 символов или меньше)
-- Пустая строка
-- Детальное описание при необходимости
-- Список конкретных изменений
+Format:
+- First line: Brief summary (50 chars or less)
+- Blank line
+- Detailed description if needed
+- List specific changes
 
-## Процесс Pull Request
+## Pull Request Process
 
-1. **Обновите документацию** для отражения изменений
-2. **Протестируйте на нескольких платформах** по возможности
-3. **Убедитесь, что CI проходит** (если доступно)
-4. **Запросите ревью** у мейнтейнеров
-5. **Оперативно реагируйте на обратную связь**
-6. **Объедините коммиты** если попросят
+1. **Update documentation** to reflect changes
+2. **Test on multiple platforms** if possible
+3. **Ensure CI passes** (if available)
+4. **Request review** from maintainers
+5. **Address feedback** promptly
+6. **Squash commits** if requested
 
-## Области проекта
+## Project Areas
 
-Области, где вклад особенно приветствуется:
+Areas where contributions are especially welcome:
 
-### Основные функции
-- Поддержка множественных плагинов (загрузка нескольких плагинов)
-- Управление зависимостями плагинов
-- Улучшения потокобезопасности
-- Оптимизация производительности
+### Core Features
+- Multi-plugin support (loading multiple plugins)
+- Plugin dependency management
+- Thread-safety improvements
+- Performance optimizations
 
-### Поддержка платформ
-- Тестирование на macOS
-- Тестирование на Windows (MSVC и MinGW)
-- Поддержка архитектуры ARM
+### Platform Support
+- Testing on macOS
+- Testing on Windows (MSVC and MinGW)
+- ARM architecture support
 
-### Примеры
-- Больше примеров плагинов
-- Пример GUI хост-приложения
-- Пример с множественными плагинами
-- Примеры реального использования
+### Examples
+- More example plugins
+- GUI host application example
+- Multi-plugin example
+- Real-world use case examples
 
-### Документация
-- Видео-туториалы
-- Блог-посты
-- Переводы
-- Улучшения API-справочника
+### Documentation
+- Video tutorials
+- Blog posts
+- Translations
+- API reference improvements
 
-### Система сборки
-- Поддержка пакетных менеджеров (vcpkg, conan)
-- Цели установки
-- Конфигурация find_package
+### Build System
+- Package manager support (vcpkg, conan)
+- Install targets
+- Find package config
 
-## Вопросы?
+## Questions?
 
-Не стесняйтесь открыть issue с вашим вопросом. Мы рады помочь!
+Feel free to open an issue with your question. We're happy to help!
 
-## Лицензия
+## License
 
-Внося вклад, вы соглашаетесь с тем, что ваши contributions будут лицензированы под той же лицензией, что и проект (см. файл LICENSE).
+By contributing, you agree that your contributions will be licensed under the same license as the project (see LICENSE file).
 
-## Признание
+## Recognition
 
-Контрибьюторы будут отмечены в README проекта. Спасибо за помощь в улучшении HotPlugPP! 🎉
+Contributors will be acknowledged in the project README. Thank you for helping make HotPlugPP better! 🎉

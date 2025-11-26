@@ -1,27 +1,26 @@
 # HotPlugPP API Reference
 
-Полная документация API для системы плагинов HotPlugPP.
+Complete API documentation for the HotPlugPP plugin system.
 
-## Содержание
+## Table of Contents
 
-- [Основные интерфейсы](#основные-интерфейсы)
+- [Core Interfaces](#core-interfaces)
   - [IPlugin](#iplugin)
   - [Version](#version)
-- [Загрузчик плагинов](#загрузчик-плагинов)
+- [Plugin Loader](#plugin-loader)
   - [PluginLoader](#pluginloader)
-  - [PluginInfo](#plugininfo)
-- [Макросы](#макросы)
-- [Поддержка платформ](#поддержка-платформ)
+- [Macros](#macros)
+- [Platform Support](#platform-support)
 
 ---
 
-## Основные интерфейсы
+## Core Interfaces
 
 ### IPlugin
 
-Базовый интерфейс, который должны реализовать все плагины.
+Base interface that all plugins must implement.
 
-**Заголовочный файл:** `hotplugpp/i_plugin.hpp`
+**Header:** `hotplugpp/i_plugin.hpp`
 
 ```cpp
 namespace hotplugpp {
@@ -38,15 +37,15 @@ namespace hotplugpp {
 }
 ```
 
-#### Методы
+#### Methods
 
 ##### `bool onLoad()`
 
-Вызывается при загрузке плагина. Используйте для инициализации ресурсов, выделения памяти или настройки состояния.
+Called when the plugin is loaded. Use this to initialize resources, allocate memory, or set up state.
 
-**Возвращает:** `true` при успешной инициализации, `false` для отмены загрузки.
+**Returns:** `true` if initialization succeeded, `false` to abort loading.
 
-**Пример:**
+**Example:**
 ```cpp
 bool onLoad() override {
     m_texture = loadTexture("plugin_texture.png");
@@ -58,11 +57,11 @@ bool onLoad() override {
 
 ##### `void onUnload()`
 
-Вызывается перед выгрузкой плагина. Освободите ресурсы здесь.
+Called before the plugin is unloaded. Clean up resources here.
 
-**Примечание:** Вызывается всегда, даже если `onLoad()` вернул false.
+**Note:** Always called, even if `onLoad()` returned false.
 
-**Пример:**
+**Example:**
 ```cpp
 void onUnload() override {
     delete m_texture;
@@ -74,12 +73,12 @@ void onUnload() override {
 
 ##### `void onUpdate(float deltaTime)`
 
-Вызывается регулярно (обычно каждый кадр). Здесь выполняется основная логика плагина.
+Called regularly (typically each frame). This is where your plugin's main logic runs.
 
-**Параметры:**
-- `deltaTime`: Время, прошедшее с последнего обновления, в секундах
+**Parameters:**
+- `deltaTime`: Time elapsed since last update in seconds
 
-**Пример:**
+**Example:**
 ```cpp
 void onUpdate(float deltaTime) override {
     m_position += m_velocity * deltaTime;
@@ -93,48 +92,27 @@ void onUpdate(float deltaTime) override {
 
 ##### `const char* getName() const`
 
-**Возвращает:** Имя плагина как C-строку.
-
-**Пример:**
-```cpp
-const char* getName() const override {
-    return "MyAwesomePlugin";
-}
-```
+**Returns:** The plugin's name as a C-string.
 
 ---
 
 ##### `Version getVersion() const`
 
-**Возвращает:** Версию плагина.
-
-**Пример:**
-```cpp
-Version getVersion() const override {
-    return Version(1, 2, 3); // v1.2.3
-}
-```
+**Returns:** The plugin's version.
 
 ---
 
 ##### `const char* getDescription() const`
 
-**Возвращает:** Краткое описание плагина.
-
-**Пример:**
-```cpp
-const char* getDescription() const override {
-    return "Предоставляет продвинутые эффекты частиц";
-}
-```
+**Returns:** A brief description of the plugin.
 
 ---
 
 ### Version
 
-Структура версии для семантического версионирования и проверки совместимости.
+Version structure for semantic versioning and compatibility checking.
 
-**Заголовочный файл:** `hotplugpp/i_plugin.hpp`
+**Header:** `hotplugpp/i_plugin.hpp`
 
 ```cpp
 struct Version {
@@ -145,78 +123,43 @@ struct Version {
     Version(uint32_t maj = 1, uint32_t min = 0, uint32_t pat = 0);
     bool isCompatible(const Version& other) const;
     std::string toString() const;
-    
-    // Операторы сравнения
-    bool operator==(const Version& other) const;
-    bool operator!=(const Version& other) const;
-    bool operator<(const Version& other) const;
-    bool operator>(const Version& other) const;
-    bool operator<=(const Version& other) const;
-    bool operator>=(const Version& other) const;
 };
 ```
 
-#### Конструкторы
-
-##### `Version(uint32_t major = 1, uint32_t minor = 0, uint32_t patch = 0)`
-
-Создаёт объект версии.
-
-**Параметры:**
-- `major`: Мажорная версия (несовместимые изменения API)
-- `minor`: Минорная версия (обратно совместимые новые функции)
-- `patch`: Патч-версия (обратно совместимые исправления ошибок)
-
----
-
-#### Методы
+#### Methods
 
 ##### `bool isCompatible(const Version& other) const`
 
-Проверяет совместимость этой версии с другой версией.
+Checks if this version is compatible with another version.
 
-**Правила совместимости:**
-- Мажорные версии должны совпадать точно
-- Минорная версия должна быть >= минорной версии другой
-- Патч-версия игнорируется
+**Compatibility Rules:**
+- Major versions must match exactly
+- This minor version must be >= other's minor version
+- Patch version is ignored
 
-**Возвращает:** `true` если совместимо, `false` иначе.
-
-**Пример:**
-```cpp
-Version plugin(1, 5, 0);
-Version required(1, 3, 0);
-
-if (plugin.isCompatible(required)) {
-    // Плагин версии 1.5.0 совместим с требованием 1.3.0
-}
-```
+**Returns:** `true` if compatible, `false` otherwise.
 
 ---
 
 ##### `std::string toString() const`
 
-**Возвращает:** Версию как строку в формате "major.minor.patch".
+**Returns:** Version as a string in format "major.minor.patch".
 
 ---
 
-## Загрузчик плагинов
+## Plugin Loader
 
 ### PluginLoader
 
-Управляет динамической загрузкой, выгрузкой и горячей перезагрузкой плагинов.
+Manages dynamic loading, unloading, and hot-reloading of plugins.
 
-**Заголовочный файл:** `hotplugpp/plugin_loader.hpp`
+**Header:** `hotplugpp/plugin_loader.hpp`
 
 ```cpp
 class PluginLoader {
 public:
     PluginLoader();
     ~PluginLoader();
-    
-    // Копирование запрещено
-    PluginLoader(const PluginLoader&) = delete;
-    PluginLoader& operator=(const PluginLoader&) = delete;
     
     bool loadPlugin(const std::string& path);
     void unloadPlugin();
@@ -228,388 +171,112 @@ public:
 };
 ```
 
-#### Конструкторы
-
-##### `PluginLoader()`
-
-Создаёт новый загрузчик плагинов. Плагины не загружены изначально.
-
----
-
-#### Методы
+#### Methods
 
 ##### `bool loadPlugin(const std::string& path)`
 
-Загружает плагин из файла разделяемой библиотеки.
+Loads a plugin from a shared library file.
 
-**Параметры:**
-- `path`: Путь к библиотеке плагина (.so/.dll/.dylib)
+**Parameters:**
+- `path`: Path to the plugin library (.so/.dll/.dylib)
 
-**Возвращает:** `true` при успешной загрузке, `false` иначе.
-
-**Поведение:**
-1. Выгружает текущий загруженный плагин
-2. Открывает разделяемую библиотеку
-3. Находит функции `createPlugin` и `destroyPlugin`
-4. Создаёт экземпляр плагина
-5. Вызывает `onLoad()`
-
-**Пример:**
-```cpp
-PluginLoader loader;
-if (!loader.loadPlugin("./plugins/my_plugin.so")) {
-    std::cerr << "Не удалось загрузить плагин!" << std::endl;
-}
-```
+**Returns:** `true` if loading succeeded, `false` otherwise.
 
 ---
 
 ##### `void unloadPlugin()`
 
-Выгружает текущий загруженный плагин.
-
-**Поведение:**
-1. Вызывает `onUnload()` на плагине
-2. Уничтожает экземпляр плагина
-3. Закрывает разделяемую библиотеку
-
-**Пример:**
-```cpp
-loader.unloadPlugin();
-```
+Unloads the currently loaded plugin.
 
 ---
 
 ##### `bool checkAndReload()`
 
-Проверяет, был ли файл плагина изменён, и перезагружает при необходимости.
+Checks if the plugin file has been modified and reloads if necessary.
 
-**Возвращает:** `true` если плагин был перезагружен, `false` иначе.
-
-**Поведение:**
-1. Проверяет время модификации файла
-2. Если изменено, выгружает старый плагин
-3. Загружает новый плагин из того же пути
-4. Вызывает callback перезагрузки, если установлен
-
-**Пример:**
-```cpp
-// В вашем цикле обновления
-if (loader.checkAndReload()) {
-    std::cout << "Плагин был горячо перезагружен!" << std::endl;
-}
-```
+**Returns:** `true` if plugin was reloaded, `false` otherwise.
 
 ---
 
 ##### `IPlugin* getPlugin() const`
 
-**Возвращает:** Указатель на загруженный экземпляр плагина или `nullptr`, если плагин не загружен.
-
-**Пример:**
-```cpp
-if (auto* plugin = loader.getPlugin()) {
-    plugin->onUpdate(deltaTime);
-}
-```
+**Returns:** Pointer to the loaded plugin instance, or `nullptr` if no plugin is loaded.
 
 ---
 
 ##### `bool isLoaded() const`
 
-**Возвращает:** `true` если плагин загружен, `false` иначе.
-
-**Пример:**
-```cpp
-if (loader.isLoaded()) {
-    loader.getPlugin()->onUpdate(deltaTime);
-}
-```
+**Returns:** `true` if a plugin is currently loaded, `false` otherwise.
 
 ---
 
 ##### `std::string getPluginPath() const`
 
-**Возвращает:** Путь текущего загруженного плагина или пустую строку, если не загружен.
+**Returns:** Path of the currently loaded plugin, or empty string if none loaded.
 
 ---
 
 ##### `void setReloadCallback(std::function<void()> callback)`
 
-Устанавливает функцию обратного вызова, которая будет вызвана при горячей перезагрузке плагина.
+Sets a callback function to be called when a plugin is hot-reloaded.
 
-**Параметры:**
-- `callback`: Функция для вызова при перезагрузке
-
-**Пример:**
-```cpp
-loader.setReloadCallback([]() {
-    std::cout << "Плагин перезагружен, переинициализация состояния..." << std::endl;
-    // Переинициализируйте состояние, зависящее от плагина
-});
-```
+**Parameters:**
+- `callback`: Function to call on reload
 
 ---
 
-### PluginInfo
-
-Структура, содержащая метаданные и дескриптор плагина.
-
-**Заголовочный файл:** `hotplugpp/plugin_loader.hpp`
-
-```cpp
-struct PluginInfo {
-    std::string path;
-    LibraryHandle handle = nullptr;
-    IPlugin* instance = nullptr;
-    CreatePluginFunc createFunc = nullptr;
-    DestroyPluginFunc destroyFunc = nullptr;
-    std::chrono::system_clock::time_point lastModified;
-    bool isLoaded = false;
-};
-```
-
----
-
-## Макросы
+## Macros
 
 ### HOTPLUGPP_CREATE_PLUGIN(PluginClass)
 
-Удобный макрос для создания необходимых фабричных функций плагина.
+Convenience macro to create the required factory functions for a plugin.
 
-**Параметры:**
-- `PluginClass`: Имя вашего класса плагина
+**Parameters:**
+- `PluginClass`: The name of your plugin class
 
-**Генерирует:**
-- `createPlugin()`: Фабричная функция, создающая экземпляр
-- `destroyPlugin()`: Фабричная функция, уничтожающая экземпляр
-
-**Пример:**
+**Example:**
 ```cpp
 class MyPlugin : public hotplugpp::IPlugin {
-    // ... реализация ...
+    // ... implementation ...
 };
 
 HOTPLUGPP_CREATE_PLUGIN(MyPlugin)
-```
-
-**Эквивалентно:**
-```cpp
-extern "C" HOTPLUGPP_API hotplugpp::IPlugin* createPlugin() {
-    return new MyPlugin();
-}
-
-extern "C" HOTPLUGPP_API void destroyPlugin(hotplugpp::IPlugin* plugin) {
-    delete plugin;
-}
 ```
 
 ---
 
 ### HOTPLUGPP_API
 
-Платформенно-зависимый макрос экспорта для символов разделяемой библиотеки.
+Platform-specific export macro for shared library symbols.
 
-**Раскрывается в:**
+**Expands to:**
 - Windows: `__declspec(dllexport)`
 - Unix/Linux: `__attribute__((visibility("default")))`
 
 ---
 
-### HOTPLUGPP_PLUGIN_EXPORT
+## Platform Support
 
-Макрос для объявления функции с `extern "C"` линковкой.
+### Platform-Specific Behavior
 
-**Раскрывается в:** `extern "C"`
-
----
-
-## Поддержка платформ
-
-### Платформенно-зависимое поведение
-
-#### Windows (.dll)
-- Использует `LoadLibraryA()` и `GetProcAddress()`
-- Требует `__declspec(dllexport)` для экспортируемых символов
-- Расширение файла: `.dll`
-
-#### Linux (.so)
-- Использует `dlopen()` и `dlsym()`
-- Требует флаг линковщика `-ldl`
-- Расширение файла: `.so`
-- Требует позиционно-независимый код (`-fPIC`)
-
-#### macOS (.dylib)
-- Использует `dlopen()` и `dlsym()`
-- Расширение файла: `.dylib`
-- Поведение аналогично Linux
+| Platform | Extension | Load Function | Symbol Function |
+|----------|-----------|---------------|-----------------|
+| Windows  | .dll      | LoadLibraryA  | GetProcAddress  |
+| Linux    | .so       | dlopen        | dlsym           |
+| macOS    | .dylib    | dlopen        | dlsym           |
 
 ---
 
-## Определения типов
+## Thread Safety
 
-```cpp
-// Типы указателей на функции для фабрик плагинов
-typedef hotplugpp::IPlugin* (*CreatePluginFunc)();
-typedef void (*DestroyPluginFunc)(hotplugpp::IPlugin*);
+⚠️ **Warning:** The current implementation is **not thread-safe**.
 
-// Платформенно-зависимый дескриптор библиотеки
-#ifdef _WIN32
-    typedef HMODULE LibraryHandle;
-#else
-    typedef void* LibraryHandle;
-#endif
-```
+- Do not call loader methods from multiple threads
+- Serialize access with mutexes for multi-threaded applications
 
 ---
 
-## Обработка ошибок
-
-### Частые ошибки
-
-**Плагин не загружается:**
-- Файл не существует или неверный путь
-- Отсутствуют зависимости
-- Несовместимая архитектура (32-bit vs 64-bit)
-- Отсутствуют функции экспорта
-
-**Горячая перезагрузка не работает:**
-- Файл заблокирован другим процессом
-- Ошибки компиляции в новой версии
-- Проблемы с правами доступа к файлу
-
-**Ошибки времени выполнения:**
-- Плагин падает в `onUpdate()`
-- Утечки памяти в коде плагина
-- Исключения, выброшенные из плагина
-
-### Лучшие практики
-
-1. **Всегда проверяйте возвращаемые значения:**
-```cpp
-if (!loader.loadPlugin(path)) {
-    // Обработка ошибки
-}
-```
-
-2. **Используйте RAII в плагинах:**
-```cpp
-class MyPlugin : public hotplugpp::IPlugin {
-    std::unique_ptr<Resource> m_resource;
-    
-    bool onLoad() override {
-        m_resource = std::make_unique<Resource>();
-        return m_resource != nullptr;
-    }
-};
-```
-
-3. **Обрабатывайте горячую перезагрузку корректно:**
-```cpp
-loader.setReloadCallback([&]() {
-    // Сохраните состояние перед перезагрузкой
-    // Восстановите состояние после перезагрузки
-});
-```
-
----
-
-## Примеры
-
-### Базовый плагин
-
-```cpp
-#include "hotplugpp/i_plugin.hpp"
-#include <iostream>
-
-class SimplePlugin : public hotplugpp::IPlugin {
-public:
-    bool onLoad() override {
-        std::cout << "SimplePlugin загружен!" << std::endl;
-        return true;
-    }
-
-    void onUnload() override {
-        std::cout << "SimplePlugin выгружается..." << std::endl;
-    }
-
-    void onUpdate(float deltaTime) override {
-        // Выполняйте работу здесь
-    }
-
-    const char* getName() const override { return "SimplePlugin"; }
-    hotplugpp::Version getVersion() const override { return {1, 0, 0}; }
-    const char* getDescription() const override { return "Простой плагин"; }
-};
-
-HOTPLUGPP_CREATE_PLUGIN(SimplePlugin)
-```
-
-### Хост-приложение
-
-```cpp
-#include "hotplugpp/plugin_loader.hpp"
-#include <iostream>
-#include <chrono>
-#include <thread>
-
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "Использование: " << argv[0] << " <plugin.so>" << std::endl;
-        return 1;
-    }
-
-    hotplugpp::PluginLoader loader;
-    
-    if (!loader.loadPlugin(argv[1])) {
-        return 1;
-    }
-
-    // Главный цикл
-    const float deltaTime = 1.0f / 60.0f;
-    while (true) {
-        auto start = std::chrono::steady_clock::now();
-        
-        // Обновление плагина
-        if (auto* plugin = loader.getPlugin()) {
-            plugin->onUpdate(deltaTime);
-        }
-        
-        // Проверка горячей перезагрузки
-        loader.checkAndReload();
-        
-        // Сон для поддержания частоты кадров
-        auto end = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        std::this_thread::sleep_for(std::chrono::milliseconds(16) - elapsed);
-    }
-
-    return 0;
-}
-```
-
----
-
-## Потокобезопасность
-
-⚠️ **Внимание:** Текущая реализация **не является потокобезопасной**.
-
-- Не вызывайте методы загрузчика из нескольких потоков
-- Сериализуйте доступ с помощью мьютексов для многопоточных приложений
-
----
-
-## Советы по производительности
-
-1. **Проверка горячей перезагрузки**: Обычно достаточно раз в секунду
-2. **Инициализация плагина**: Держите `onLoad()` быстрым
-3. **Производительность обновления**: `onUpdate()` вызывается часто — оптимизируйте его
-4. **Память**: Плагины разделяют кучу с хостом — очищайте в `onUnload()`
-
----
-
-Для дополнительной информации:
-- [[Главная|Home]] — Обзор
-- [[Сборка|BUILD]] — Инструкции по сборке
-- [[Туториал|TUTORIAL]] — Пошаговое руководство
-- [Примеры](https://github.com/fica99/HotPlugPP/tree/main/examples) — Рабочие примеры
+For more information:
+- [[Home]] - Overview
+- [[Build Instructions|BUILD]] - Build instructions
+- [[Tutorial|TUTORIAL]] - Step-by-step guide
