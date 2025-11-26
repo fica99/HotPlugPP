@@ -6,6 +6,9 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build (${{ matrix.os }})
@@ -74,7 +77,7 @@ jobs:
               is_pascal_case=true
             fi
             
-            if [[ "$name" =~ ^[a-z][a-z0-9_]*$ ]]; then
+            if [[ "$name" =~ ^[a-z]([a-z0-9_]*[a-z0-9])?$ ]]; then
               is_snake_case=true
             fi
             
