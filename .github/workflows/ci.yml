@@ -51,6 +51,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate C++ file naming conventions
+        shell: bash
         run: |
           #!/bin/bash
           set -e
