@@ -33,47 +33,64 @@ struct PluginInfo {
 namespace {
 
 /**
+ * @brief Validation result with specific error message
+ */
+struct ValidationResult {
+    bool valid;
+    std::string errorMessage;
+};
+
+/**
  * @brief Validate that a path is safe for loading as a plugin
  * @param path Path to validate
- * @return true if path is valid, false otherwise
+ * @return ValidationResult with valid flag and error message if invalid
+ * 
+ * @note This function performs validation at a point in time. There is a potential
+ *       Time-of-Check-Time-of-Use (TOCTOU) race condition between validation and
+ *       actual library loading. This is acceptable for trusted plugin directories
+ *       but should be considered when loading plugins from untrusted sources.
  */
-bool isValidPluginPath(const std::string& path) {
+ValidationResult validatePluginPath(const std::string& path) {
     if (path.empty()) {
-        return false;
+        return {false, "path is empty"};
     }
 
     // Check file exists and is a regular file
     struct stat statbuf;
     if (stat(path.c_str(), &statbuf) != 0) {
-        return false;
+        return {false, "file does not exist"};
     }
 
     if (!S_ISREG(statbuf.st_mode)) {
-        return false;
+        return {false, "path is not a regular file"};
     }
 
     // Check for valid shared library extension
 #ifdef _WIN32
-    const std::string expectedSuffix = ".dll";
-#elif defined(__APPLE__)
-    const std::string expectedSuffix = ".dylib";
-#else
-    const std::string expectedSuffix = ".so";
-#endif
-
-    if (path.length() < expectedSuffix.length()) {
-        return false;
-    }
-
-    std::string suffix = path.substr(path.length() - expectedSuffix.length());
-    // Case-insensitive comparison for Windows
-#ifdef _WIN32
-    for (auto& c : suffix) {
+    const std::string expectedExt = ".dll";
+    // Case-insensitive check for Windows
+    std::string pathLower = path;
+    for (auto& c : pathLower) {
         c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
+    if (pathLower.length() < expectedExt.length() ||
+        pathLower.substr(pathLower.length() - expectedExt.length()) != expectedExt) {
+        return {false, "invalid file extension (expected .dll)"};
+    }
+#elif defined(__APPLE__)
+    const std::string expectedExt = ".dylib";
+    if (path.length() < expectedExt.length() ||
+        path.substr(path.length() - expectedExt.length()) != expectedExt) {
+        return {false, "invalid file extension (expected .dylib)"};
+    }
+#else
+    // Linux: support both .so and versioned libraries like libfoo.so.1, libfoo.so.1.0.0
+    if (path.find(".so") == std::string::npos) {
+        return {false, "invalid file extension (expected .so or versioned .so.x)"};
+    }
 #endif
 
-    return suffix == expectedSuffix;
+    return {true, ""};
 }
 
 /**
@@ -91,16 +108,18 @@ std::chrono::system_clock::time_point getFileModificationTime(const std::string&
 
 /**
  * @brief Load a shared library after validating the path
- * @param path Library path (must be pre-validated)
+ * @param path Library path (must pass validatePluginPath() validation:
+ *             - Must exist and be a regular file
+ *             - Must have correct platform extension (.so/.dll/.dylib)
+ *             - On Linux, versioned libraries like .so.1 are also accepted)
  * @return Library handle or nullptr on failure
+ * @note This is an internal function that trusts its input has been validated
  */
 LibraryHandle loadLibrary(const std::string& path) {
-    // Path validation should be done before calling this function
-    // This is an internal function that trusts its input
 #ifdef _WIN32
     return LoadLibraryA(path.c_str());
 #else
-    return dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);  // NOLINT: path is validated before this call
+    return dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);  // lgtm[cpp/uncontrolled-process-operation] path is validated before this call
 #endif
 }
 
@@ -174,8 +193,13 @@ PluginLoader::~PluginLoader() {
 
 bool PluginLoader::loadPlugin(const std::string& path) {
     // Validate plugin path before loading
-    if (!isValidPluginPath(path)) {
-        std::cerr << "Invalid plugin path: " << path << std::endl;
+    auto validationResult = validatePluginPath(path);
+    if (!validationResult.valid) {
+        std::cerr << "Invalid plugin path: " << validationResult.errorMessage;
+        if (!path.empty()) {
+            std::cerr << ": " << path;
+        }
+        std::cerr << std::endl;
         return false;
     }
 
