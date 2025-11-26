@@ -21,6 +21,15 @@ endif()
 # Enable position independent code for shared libraries
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Fetch spdlog for logging
+include(FetchContent)
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG v1.15.0
+)
+FetchContent_MakeAvailable(spdlog)
+
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 

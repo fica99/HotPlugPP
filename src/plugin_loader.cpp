@@ -1,6 +1,6 @@
 #include "hotplugpp/plugin_loader.hpp"
+#include "hotplugpp/logger.hpp"
 
-#include <iostream>
 #include <utility>
 
 #ifdef _WIN32
@@ -28,8 +28,8 @@ bool PluginLoader::loadPlugin(const std::string& path) {
     // Load the shared library
     LibraryHandle handle = loadLibrary(path);
     if (!handle) {
-        std::cerr << "Failed to load library: " << path << std::endl;
-        std::cerr << "Error: " << getLastError() << std::endl;
+        HOTPLUGPP_LOG_ERROR("Failed to load library: " + path);
+        HOTPLUGPP_LOG_ERROR("Error: " + getLastError());
         return false;
     }
 
@@ -40,8 +40,8 @@ bool PluginLoader::loadPlugin(const std::string& path) {
         getFunction(handle, "destroyPlugin"));
 
     if (!createFunc || !destroyFunc) {
-        std::cerr << "Failed to find plugin factory functions in: " << path << std::endl;
-        std::cerr << "Error: " << getLastError() << std::endl;
+        HOTPLUGPP_LOG_ERROR("Failed to find plugin factory functions in: " + path);
+        HOTPLUGPP_LOG_ERROR("Error: " + getLastError());
         unloadLibrary(handle);
         return false;
     }
@@ -49,14 +49,14 @@ bool PluginLoader::loadPlugin(const std::string& path) {
     // Create plugin instance
     IPlugin* plugin = createFunc();
     if (!plugin) {
-        std::cerr << "Failed to create plugin instance from: " << path << std::endl;
+        HOTPLUGPP_LOG_ERROR("Failed to create plugin instance from: " + path);
         unloadLibrary(handle);
         return false;
     }
 
     // Initialize plugin
     if (!plugin->onLoad()) {
-        std::cerr << "Plugin initialization failed: " << path << std::endl;
+        HOTPLUGPP_LOG_ERROR("Plugin initialization failed: " + path);
         destroyFunc(plugin);
         unloadLibrary(handle);
         return false;
@@ -71,8 +71,8 @@ bool PluginLoader::loadPlugin(const std::string& path) {
     m_pluginInfo.lastModified = getFileModificationTime(path);
     m_pluginInfo.isLoaded = true;
 
-    std::cout << "Plugin loaded successfully: " << plugin->getName() << " v"
-              << plugin->getVersion().toString() << std::endl;
+    HOTPLUGPP_LOG_INFO("Plugin loaded successfully: " + std::string(plugin->getName()) + " v" +
+                       plugin->getVersion().toString());
 
     return true;
 }
@@ -113,7 +113,7 @@ bool PluginLoader::checkAndReload() {
 
     // Check if file has been modified
     if (currentModTime > m_pluginInfo.lastModified) {
-        std::cout << "Plugin file modified, reloading..." << std::endl;
+        HOTPLUGPP_LOG_DEBUG("Plugin file modified, reloading...");
 
         std::string path = m_pluginInfo.path;
         unloadPlugin();
@@ -124,7 +124,7 @@ bool PluginLoader::checkAndReload() {
             }
             return true;
         } else {
-            std::cerr << "Failed to reload plugin: " << path << std::endl;
+            HOTPLUGPP_LOG_ERROR("Failed to reload plugin: " + path);
         }
     }
 
