@@ -12,6 +12,18 @@ FetchContent_MakeAvailable(googletest)
 # Include Google Test
 include(GoogleTest)
 
+# Platform-specific shared library prefix and suffix
+if(WIN32)
+    set(SHARED_LIB_PREFIX "")
+    set(SHARED_LIB_SUFFIX ".dll")
+elseif(APPLE)
+    set(SHARED_LIB_PREFIX "lib")
+    set(SHARED_LIB_SUFFIX ".dylib")
+else()
+    set(SHARED_LIB_PREFIX "lib")
+    set(SHARED_LIB_SUFFIX ".so")
+endif()
+
 # Test plugin for integration tests
 add_library(test_plugin SHARED
     test_plugin/TestPlugin.cpp
@@ -20,9 +32,10 @@ target_include_directories(test_plugin PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 set_target_properties(test_plugin PROPERTIES
-    PREFIX "lib"
-    SUFFIX ".so"
+    PREFIX "${SHARED_LIB_PREFIX}"
+    SUFFIX "${SHARED_LIB_SUFFIX}"
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
 )
 
 # Failing test plugin (onLoad returns false)
@@ -33,9 +46,10 @@ target_include_directories(failing_plugin PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
 set_target_properties(failing_plugin PROPERTIES
-    PREFIX "lib"
-    SUFFIX ".so"
+    PREFIX "${SHARED_LIB_PREFIX}"
+    SUFFIX "${SHARED_LIB_SUFFIX}"
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
 )
 
 # Version tests
@@ -58,6 +72,8 @@ target_link_libraries(plugin_loader_tests PRIVATE
 )
 target_compile_definitions(plugin_loader_tests PRIVATE
     TEST_PLUGIN_DIR="${CMAKE_BINARY_DIR}/tests"
+    SHARED_LIB_PREFIX="${SHARED_LIB_PREFIX}"
+    SHARED_LIB_SUFFIX="${SHARED_LIB_SUFFIX}"
 )
 add_dependencies(plugin_loader_tests test_plugin failing_plugin)
 gtest_discover_tests(plugin_loader_tests)
@@ -82,6 +98,8 @@ target_link_libraries(integration_tests PRIVATE
 )
 target_compile_definitions(integration_tests PRIVATE
     TEST_PLUGIN_DIR="${CMAKE_BINARY_DIR}/tests"
+    SHARED_LIB_PREFIX="${SHARED_LIB_PREFIX}"
+    SHARED_LIB_SUFFIX="${SHARED_LIB_SUFFIX}"
 )
 add_dependencies(integration_tests test_plugin)
 gtest_discover_tests(integration_tests)

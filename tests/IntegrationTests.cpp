@@ -11,7 +11,7 @@ namespace tests {
 class IntegrationTest : public ::testing::Test {
   protected:
     void SetUp() override {
-        m_testPluginPath = std::string(TEST_PLUGIN_DIR) + "/libtest_plugin.so";
+        m_testPluginPath = std::string(TEST_PLUGIN_DIR) + "/" + SHARED_LIB_PREFIX + "test_plugin" + SHARED_LIB_SUFFIX;
     }
 
     std::string m_testPluginPath;

@@ -12,8 +12,8 @@ namespace tests {
 class PluginLoaderTest : public ::testing::Test {
   protected:
     void SetUp() override {
-        m_testPluginPath = std::string(TEST_PLUGIN_DIR) + "/libtest_plugin.so";
-        m_failingPluginPath = std::string(TEST_PLUGIN_DIR) + "/libfailing_plugin.so";
+        m_testPluginPath = std::string(TEST_PLUGIN_DIR) + "/" + SHARED_LIB_PREFIX + "test_plugin" + SHARED_LIB_SUFFIX;
+        m_failingPluginPath = std::string(TEST_PLUGIN_DIR) + "/" + SHARED_LIB_PREFIX + "failing_plugin" + SHARED_LIB_SUFFIX;
     }
 
     void TearDown() override {
