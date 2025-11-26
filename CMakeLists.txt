@@ -27,3 +27,11 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # Add subdirectories
 add_subdirectory(src)
 add_subdirectory(examples)
+
+# Testing
+option(HOTPLUGPP_BUILD_TESTS "Build tests" ON)
+
+if(HOTPLUGPP_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
