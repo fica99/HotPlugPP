@@ -1,4 +1,4 @@
-#include "hotplugpp/IPlugin.hpp"
+#include "hotplugpp/i_plugin.hpp"
 
 #include <gtest/gtest.h>
 #include <memory>

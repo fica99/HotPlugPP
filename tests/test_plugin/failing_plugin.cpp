@@ -1,4 +1,4 @@
-#include "hotplugpp/IPlugin.hpp"
+#include "hotplugpp/i_plugin.hpp"
 
 /**
  * @brief A test plugin that fails to load (onLoad returns false)
