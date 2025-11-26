@@ -1,4 +1,4 @@
-#include "hotplugpp/PluginLoader.hpp"
+#include "hotplugpp/plugin_loader.hpp"
 
 #include <iostream>
 #include <utility>

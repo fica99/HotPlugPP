@@ -1,0 +1,20 @@
+name: File Naming Convention
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  check-file-naming:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Check file naming convention
+      run: |
+        chmod +x ./scripts/check-file-naming.sh
+        ./scripts/check-file-naming.sh

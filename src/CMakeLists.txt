@@ -1,6 +1,6 @@
 # Core library
 add_library(hotplugpp STATIC
-    PluginLoader.cpp
+    plugin_loader.cpp
 )
 
 target_include_directories(hotplugpp PUBLIC

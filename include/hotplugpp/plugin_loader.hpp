@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IPlugin.hpp"
+#include "i_plugin.hpp"
 
 #include <chrono>
 #include <functional>
