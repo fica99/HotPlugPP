@@ -118,42 +118,51 @@ class Logger {
 #define HOTPLUGPP_LOG_DEBUG(msg) ((void)0)
 #define HOTPLUGPP_LOG_INFO(msg) ((void)0)
 #define HOTPLUGPP_LOG_WARN(msg) do { \
-    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Warn) \
-        ::hotplugpp::Logger::instance().warn(msg); \
+    auto& logger_ = ::hotplugpp::Logger::instance(); \
+    if (logger_.getLevel() <= ::hotplugpp::LogLevel::Warn) \
+        logger_.warn(msg); \
 } while(0)
 #define HOTPLUGPP_LOG_ERROR(msg) do { \
-    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Error) \
-        ::hotplugpp::Logger::instance().error(msg); \
+    auto& logger_ = ::hotplugpp::Logger::instance(); \
+    if (logger_.getLevel() <= ::hotplugpp::LogLevel::Error) \
+        logger_.error(msg); \
 } while(0)
 #define HOTPLUGPP_LOG_CRITICAL(msg) do { \
-    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Critical) \
-        ::hotplugpp::Logger::instance().critical(msg); \
+    auto& logger_ = ::hotplugpp::Logger::instance(); \
+    if (logger_.getLevel() <= ::hotplugpp::LogLevel::Critical) \
+        logger_.critical(msg); \
 } while(0)
 #else
 // Debug build or explicit logging enabled
 #define HOTPLUGPP_LOG_TRACE(msg) do { \
-    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Trace) \
-        ::hotplugpp::Logger::instance().trace(msg); \
+    auto& logger_ = ::hotplugpp::Logger::instance(); \
+    if (logger_.getLevel() <= ::hotplugpp::LogLevel::Trace) \
+        logger_.trace(msg); \
 } while(0)
 #define HOTPLUGPP_LOG_DEBUG(msg) do { \
-    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Debug) \
-        ::hotplugpp::Logger::instance().debug(msg); \
+    auto& logger_ = ::hotplugpp::Logger::instance(); \
+    if (logger_.getLevel() <= ::hotplugpp::LogLevel::Debug) \
+        logger_.debug(msg); \
 } while(0)
 #define HOTPLUGPP_LOG_INFO(msg) do { \
-    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Info) \
-        ::hotplugpp::Logger::instance().info(msg); \
+    auto& logger_ = ::hotplugpp::Logger::instance(); \
+    if (logger_.getLevel() <= ::hotplugpp::LogLevel::Info) \
+        logger_.info(msg); \
 } while(0)
 #define HOTPLUGPP_LOG_WARN(msg) do { \
-    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Warn) \
-        ::hotplugpp::Logger::instance().warn(msg); \
+    auto& logger_ = ::hotplugpp::Logger::instance(); \
+    if (logger_.getLevel() <= ::hotplugpp::LogLevel::Warn) \
+        logger_.warn(msg); \
 } while(0)
 #define HOTPLUGPP_LOG_ERROR(msg) do { \
-    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Error) \
-        ::hotplugpp::Logger::instance().error(msg); \
+    auto& logger_ = ::hotplugpp::Logger::instance(); \
+    if (logger_.getLevel() <= ::hotplugpp::LogLevel::Error) \
+        logger_.error(msg); \
 } while(0)
 #define HOTPLUGPP_LOG_CRITICAL(msg) do { \
-    if (::hotplugpp::Logger::instance().getLevel() <= ::hotplugpp::LogLevel::Critical) \
-        ::hotplugpp::Logger::instance().critical(msg); \
+    auto& logger_ = ::hotplugpp::Logger::instance(); \
+    if (logger_.getLevel() <= ::hotplugpp::LogLevel::Critical) \
+        logger_.critical(msg); \
 } while(0)
 #endif
 
