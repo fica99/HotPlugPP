@@ -1,5 +1,6 @@
 #include "hotplugpp/plugin_loader.hpp"
 
+#include <cctype>
 #include <chrono>
 #include <iostream>
 #include <utility>
@@ -32,6 +33,50 @@ struct PluginInfo {
 namespace {
 
 /**
+ * @brief Validate that a path is safe for loading as a plugin
+ * @param path Path to validate
+ * @return true if path is valid, false otherwise
+ */
+bool isValidPluginPath(const std::string& path) {
+    if (path.empty()) {
+        return false;
+    }
+
+    // Check file exists and is a regular file
+    struct stat statbuf;
+    if (stat(path.c_str(), &statbuf) != 0) {
+        return false;
+    }
+
+    if (!S_ISREG(statbuf.st_mode)) {
+        return false;
+    }
+
+    // Check for valid shared library extension
+#ifdef _WIN32
+    const std::string expectedSuffix = ".dll";
+#elif defined(__APPLE__)
+    const std::string expectedSuffix = ".dylib";
+#else
+    const std::string expectedSuffix = ".so";
+#endif
+
+    if (path.length() < expectedSuffix.length()) {
+        return false;
+    }
+
+    std::string suffix = path.substr(path.length() - expectedSuffix.length());
+    // Case-insensitive comparison for Windows
+#ifdef _WIN32
+    for (auto& c : suffix) {
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+#endif
+
+    return suffix == expectedSuffix;
+}
+
+/**
  * @brief Get the last modification time of a file
  * @param path File path
  * @return Last modification time
@@ -45,15 +90,17 @@ std::chrono::system_clock::time_point getFileModificationTime(const std::string&
 }
 
 /**
- * @brief Load a shared library
- * @param path Library path
+ * @brief Load a shared library after validating the path
+ * @param path Library path (must be pre-validated)
  * @return Library handle or nullptr on failure
  */
 LibraryHandle loadLibrary(const std::string& path) {
+    // Path validation should be done before calling this function
+    // This is an internal function that trusts its input
 #ifdef _WIN32
     return LoadLibraryA(path.c_str());
 #else
-    return dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+    return dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);  // NOLINT: path is validated before this call
 #endif
 }
 
@@ -126,6 +173,12 @@ PluginLoader::~PluginLoader() {
 }
 
 bool PluginLoader::loadPlugin(const std::string& path) {
+    // Validate plugin path before loading
+    if (!isValidPluginPath(path)) {
+        std::cerr << "Invalid plugin path: " << path << std::endl;
+        return false;
+    }
+
     // Unload existing plugin if any
     if (isLoaded()) {
         unloadPlugin();
