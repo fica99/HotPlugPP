@@ -45,7 +45,7 @@ class PluginLoader {
 
     /**
      * @brief Load a plugin from a shared library
-     * @param path Path to the plugin library (.so/.dll)
+     * @param path Path to the plugin library (.so/.dll/.dylib)
      * @return true if loading succeeded, false otherwise
      */
     bool loadPlugin(const std::string& path);
