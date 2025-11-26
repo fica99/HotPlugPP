@@ -20,7 +20,7 @@ We'll create a "Greeter Plugin" that:
 Create a new file `examples/greeter_plugin/GreeterPlugin.cpp`:
 
 ```cpp
-#include "hotplugpp/IPlugin.hpp"
+#include "hotplugpp/i_plugin.hpp"
 #include <iostream>
 #include <string>
 

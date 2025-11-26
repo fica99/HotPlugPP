@@ -472,7 +472,7 @@ loader.setReloadCallback([&]() {
 ### Basic Plugin
 
 ```cpp
-#include "hotplugpp/IPlugin.hpp"
+#include "hotplugpp/i_plugin.hpp"
 #include <iostream>
 
 class SimplePlugin : public hotplugpp::IPlugin {
@@ -501,7 +501,7 @@ HOTPLUGPP_CREATE_PLUGIN(SimplePlugin)
 ### Host Application
 
 ```cpp
-#include "hotplugpp/PluginLoader.hpp"
+#include "hotplugpp/plugin_loader.hpp"
 #include <iostream>
 #include <chrono>
 #include <thread>
