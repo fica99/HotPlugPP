@@ -121,3 +121,16 @@ target_compile_definitions(integration_tests PRIVATE
 )
 add_dependencies(integration_tests test_plugin)
 gtest_discover_tests(integration_tests)
+
+# FileWatcher tests
+add_executable(file_watcher_tests
+    file_watcher_tests.cpp
+)
+target_link_libraries(file_watcher_tests PRIVATE
+    GTest::gtest_main
+    hotplugpp
+)
+target_compile_definitions(file_watcher_tests PRIVATE
+    TEST_PLUGIN_DIR="${CMAKE_BINARY_DIR}/tests"
+)
+gtest_discover_tests(file_watcher_tests)

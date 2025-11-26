@@ -21,6 +21,20 @@ endif()
 # Enable position independent code for shared libraries
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Fetch efsw (Entropia File System Watcher)
+include(FetchContent)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+set(BUILD_TEST_APP OFF CACHE BOOL "" FORCE)
+set(EFSW_INSTALL OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    efsw
+    GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
+    GIT_TAG        1.4.1
+)
+FetchContent_MakeAvailable(efsw)
+
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
