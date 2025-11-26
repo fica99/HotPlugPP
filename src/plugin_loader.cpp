@@ -1,5 +1,7 @@
 #include "hotplugpp/plugin_loader.hpp"
 
+#include "hotplugpp/file_watcher.hpp"
+
 #include <iostream>
 #include <utility>
 
@@ -13,9 +15,10 @@
 
 namespace hotplugpp {
 
-PluginLoader::PluginLoader() = default;
+PluginLoader::PluginLoader() : m_fileWatcher(std::make_unique<FileWatcher>()) {}
 
 PluginLoader::~PluginLoader() {
+    enableAutoReload(false);
     unloadPlugin();
 }
 
@@ -74,6 +77,11 @@ bool PluginLoader::loadPlugin(const std::string& path) {
     std::cout << "Plugin loaded successfully: " << plugin->getName() << " v"
               << plugin->getVersion().toString() << std::endl;
 
+    // Setup file watching if auto-reload is enabled
+    if (m_autoReloadEnabled.load()) {
+        setupFileWatch();
+    }
+
     return true;
 }
 
@@ -81,6 +89,9 @@ void PluginLoader::unloadPlugin() {
     if (!isLoaded()) {
         return;
     }
+
+    // Remove file watch first
+    removeFileWatch();
 
     // Call plugin cleanup
     if (m_pluginInfo.instance) {
@@ -105,6 +116,11 @@ void PluginLoader::unloadPlugin() {
 }
 
 bool PluginLoader::checkAndReload() {
+    // First check for pending async reload
+    if (processPendingReload()) {
+        return true;
+    }
+
     if (!isLoaded()) {
         return false;
     }
@@ -145,6 +161,80 @@ std::string PluginLoader::getPluginPath() const {
 
 void PluginLoader::setReloadCallback(std::function<void()> callback) {
     m_reloadCallback = std::move(callback);
+}
+
+void PluginLoader::enableAutoReload(bool enable) {
+    bool wasEnabled = m_autoReloadEnabled.exchange(enable);
+
+    if (enable && !wasEnabled) {
+        // Just enabled, start file watcher and setup watch
+        m_fileWatcher->start();
+        if (isLoaded()) {
+            setupFileWatch();
+        }
+    } else if (!enable && wasEnabled) {
+        // Just disabled, remove watch and stop watcher
+        removeFileWatch();
+        m_fileWatcher->stop();
+    }
+}
+
+bool PluginLoader::isAutoReloadEnabled() const {
+    return m_autoReloadEnabled.load();
+}
+
+void PluginLoader::setupFileWatch() {
+    if (!isLoaded() || !m_autoReloadEnabled.load()) {
+        return;
+    }
+
+    m_fileWatcher->watchFile(m_pluginInfo.path,
+                             [this](const std::string& filePath) { onFileChanged(filePath); });
+}
+
+void PluginLoader::removeFileWatch() {
+    if (!m_pluginInfo.path.empty()) {
+        m_fileWatcher->unwatchFile(m_pluginInfo.path);
+    }
+}
+
+void PluginLoader::onFileChanged(const std::string& /*filePath*/) {
+    // Mark that we need to reload
+    // The actual reload will happen in the main thread when checkAndReload or
+    // processPendingReload is called
+    m_pendingReload.fetch_add(1);
+    std::cout << "File change detected, reload pending..." << std::endl;
+}
+
+bool PluginLoader::processPendingReload() {
+    // Clear the counter and check if there were any pending reloads
+    if (m_pendingReload.exchange(0) == 0) {
+        return false;
+    }
+
+    std::lock_guard<std::mutex> lock(m_reloadMutex);
+
+    if (!isLoaded()) {
+        return false;
+    }
+
+    std::cout << "Processing pending reload..." << std::endl;
+
+    std::string path = m_pluginInfo.path;
+    unloadPlugin();
+
+    if (loadPlugin(path)) {
+        if (m_reloadCallback) {
+            m_reloadCallback();
+        }
+        return true;
+    } else {
+        std::cerr << "Failed to reload plugin: " << path << std::endl;
+        // Disable auto-reload on failure to avoid repeated failed attempts
+        enableAutoReload(false);
+    }
+
+    return false;
 }
 
 std::chrono::system_clock::time_point

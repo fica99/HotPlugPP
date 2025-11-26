@@ -2,9 +2,11 @@
 
 #include "i_plugin.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 // Platform-specific includes
@@ -17,6 +19,9 @@ typedef void* LibraryHandle;
 #endif
 
 namespace hotplugpp {
+
+// Forward declaration
+class FileWatcher;
 
 /**
  * @brief Plugin metadata and handle
@@ -85,9 +90,31 @@ class PluginLoader {
      */
     void setReloadCallback(std::function<void()> callback);
 
+    /**
+     * @brief Enable automatic file watching for hot-reload
+     *
+     * When enabled, the plugin file will be monitored for changes
+     * using an asynchronous file watcher. When changes are detected,
+     * a reload will be pending. The actual reload occurs on the next
+     * call to checkAndReload(), and then the reload callback is invoked.
+     *
+     * @param enable true to enable, false to disable
+     */
+    void enableAutoReload(bool enable);
+
+    /**
+     * @brief Check if automatic reload is enabled
+     * @return true if auto-reload is enabled, false otherwise
+     */
+    bool isAutoReloadEnabled() const;
+
   private:
     PluginInfo m_pluginInfo;
     std::function<void()> m_reloadCallback;
+    std::unique_ptr<FileWatcher> m_fileWatcher;
+    std::atomic<bool> m_autoReloadEnabled{false};
+    std::atomic<int> m_pendingReload{0};
+    mutable std::mutex m_reloadMutex;
 
     /**
      * @brief Get the last modification time of a file
@@ -122,6 +149,28 @@ class PluginLoader {
      * @return Error message string
      */
     std::string getLastError();
+
+    /**
+     * @brief Setup file watching for the currently loaded plugin
+     */
+    void setupFileWatch();
+
+    /**
+     * @brief Remove file watching for the currently loaded plugin
+     */
+    void removeFileWatch();
+
+    /**
+     * @brief Handle file change notification from the file watcher
+     * @param filePath Path of the changed file
+     */
+    void onFileChanged(const std::string& filePath);
+
+    /**
+     * @brief Process any pending reload (called from main thread)
+     * @return true if reload was performed, false otherwise
+     */
+    bool processPendingReload();
 };
 
 } // namespace hotplugpp

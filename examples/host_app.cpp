@@ -2,18 +2,27 @@
 
 #include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <thread>
 
 void printUsage(const char* programName) {
-    std::cout << "Usage: " << programName << " <plugin_path>" << std::endl;
+    std::cout << "Usage: " << programName << " <plugin_path> [--auto-reload]" << std::endl;
     std::cout << "Example: " << programName << " ./lib/libsample_plugin.so" << std::endl;
+    std::cout << "         " << programName << " ./lib/libsample_plugin.so --auto-reload"
+              << std::endl;
     std::cout << std::endl;
     std::cout << "The host application will:" << std::endl;
     std::cout << "  1. Load the specified plugin" << std::endl;
     std::cout << "  2. Call the plugin's update() method in a loop" << std::endl;
     std::cout << "  3. Monitor the plugin file for changes and hot-reload if modified" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "  --auto-reload  Use asynchronous file watching via efsw (more efficient)"
+              << std::endl;
+    std::cout << "                 Without this flag, uses polling-based reload detection"
+              << std::endl;
     std::cout << std::endl;
     std::cout << "Press Ctrl+C to exit" << std::endl;
 }
@@ -28,6 +37,15 @@ int main(int argc, char* argv[]) {
     }
 
     std::string pluginPath = argv[1];
+    bool useAutoReload = false;
+
+    // Check for --auto-reload flag
+    for (int i = 2; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--auto-reload") == 0) {
+            useAutoReload = true;
+            break;
+        }
+    }
 
     // Create plugin loader
     hotplugpp::PluginLoader loader;
@@ -38,6 +56,12 @@ int main(int argc, char* argv[]) {
         std::cout << "*** Plugin has been reloaded! ***" << std::endl;
         std::cout << std::endl;
     });
+
+    // Enable auto-reload if requested
+    if (useAutoReload) {
+        std::cout << "Enabling asynchronous file watching (efsw)..." << std::endl;
+        loader.enableAutoReload(true);
+    }
 
     // Load the plugin
     std::cout << "Loading plugin from: " << pluginPath << std::endl;
@@ -57,7 +81,12 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << std::endl;
-    std::cout << "Starting update loop (hot-reload monitoring enabled)..." << std::endl;
+    if (useAutoReload) {
+        std::cout << "Starting update loop (asynchronous hot-reload enabled via efsw)..."
+                  << std::endl;
+    } else {
+        std::cout << "Starting update loop (polling-based hot-reload monitoring)..." << std::endl;
+    }
     std::cout << "You can modify and recompile the plugin to see hot-reload in action!"
               << std::endl;
     std::cout << std::endl;
@@ -72,7 +101,9 @@ int main(int argc, char* argv[]) {
     while (true) {
         auto frameStart = std::chrono::high_resolution_clock::now();
 
-        // Check for plugin reload every 60 frames (once per second at 60 FPS)
+        // Check for plugin reload
+        // With auto-reload enabled, this will process pending notifications
+        // Without auto-reload, this polls the file modification time
         if (frameCount % 60 == 0) {
             loader.checkAndReload();
         }
