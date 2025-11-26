@@ -52,9 +52,9 @@ jobs:
             build/CMakeCache.txt
             build/CMakeFiles
             build/_deps
-          key: ${{ runner.os }}-${{ matrix.compiler }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}
+          key: ${{ runner.os }}-${{ matrix.compiler }}-cmake-v1-${{ hashFiles('**/CMakeLists.txt') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.compiler }}-cmake-
+            ${{ runner.os }}-${{ matrix.compiler }}-cmake-v1-
 
       - name: Configure CMake (Unix)
         if: runner.os != 'Windows'
@@ -92,6 +92,10 @@ jobs:
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
           else
             BASE_SHA="${{ github.event.before }}"
+            # Handle first commit or force push (all-zeros SHA)
+            if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+              BASE_SHA="HEAD~1"
+            fi
           fi
           # Check if any C++ files changed
           if git diff --name-only "$BASE_SHA" HEAD 2>/dev/null | grep -qE '\.(cpp|hpp|h|cc|cxx)$'; then
