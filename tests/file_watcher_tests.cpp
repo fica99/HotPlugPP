@@ -132,3 +132,36 @@ TEST_F(FileWatcherTest, DoubleStart) {
     watcher.stop();
     EXPECT_FALSE(watcher.isRunning());
 }
+
+TEST_F(FileWatcherTest, FileChangeDetection) {
+    hotplugpp::FileWatcher watcher;
+
+    std::atomic<bool> callbackInvoked{false};
+    // Must watch BEFORE starting the watcher to ensure inotify watch is registered
+    ASSERT_TRUE(watcher.watchFile(testFilePath, [&callbackInvoked](const std::string&) {
+        callbackInvoked.store(true);
+    }));
+
+    watcher.start();
+
+    // Wait for the watcher to fully initialize
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // Modify file
+    {
+        std::ofstream ofs(testFilePath, std::ios::out | std::ios::trunc);
+        ofs << "modified content at " << std::chrono::system_clock::now().time_since_epoch().count();
+        ofs.flush();
+        ofs.close();
+    }
+
+    // Wait for notification (file system events may have some delay, especially in CI)
+    for (int i = 0; i < 30 && !callbackInvoked.load(); ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    // Note: This test may be flaky in some CI environments due to timing issues
+    // with file system notifications. The core functionality is also tested
+    // indirectly through other integration tests.
+    EXPECT_TRUE(callbackInvoked.load()) << "File change notification was not received within timeout";
+}

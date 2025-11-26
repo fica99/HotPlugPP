@@ -95,7 +95,8 @@ class PluginLoader {
      *
      * When enabled, the plugin file will be monitored for changes
      * using an asynchronous file watcher. When changes are detected,
-     * the plugin will be automatically reloaded and the reload callback invoked.
+     * a reload will be pending. The actual reload occurs on the next
+     * call to checkAndReload(), and then the reload callback is invoked.
      *
      * @param enable true to enable, false to disable
      */
@@ -112,7 +113,7 @@ class PluginLoader {
     std::function<void()> m_reloadCallback;
     std::unique_ptr<FileWatcher> m_fileWatcher;
     std::atomic<bool> m_autoReloadEnabled{false};
-    std::atomic<bool> m_pendingReload{false};
+    std::atomic<int> m_pendingReload{0};
     mutable std::mutex m_reloadMutex;
 
     /**

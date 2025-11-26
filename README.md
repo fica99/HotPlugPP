@@ -90,8 +90,9 @@ HotPlugPP supports two modes of file monitoring for hot-reload:
 ### 2. Asynchronous File Watching (recommended)
 - Uses [efsw](https://github.com/SpartanJ/efsw) for event-driven file monitoring
 - Runs in a separate thread, notifying when files change
-- More efficient as it doesn't require polling
+- More efficient: `checkAndReload()` becomes a lightweight flag check instead of a file system stat call
 - Enable with `loader.enableAutoReload(true)`
+- Note: `checkAndReload()` must still be called to process pending reload notifications
 
 ## Platform Support
 

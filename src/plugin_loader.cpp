@@ -202,12 +202,13 @@ void PluginLoader::onFileChanged(const std::string& /*filePath*/) {
     // Mark that we need to reload
     // The actual reload will happen in the main thread when checkAndReload or
     // processPendingReload is called
-    m_pendingReload.store(true);
+    m_pendingReload.fetch_add(1);
     std::cout << "File change detected, reload pending..." << std::endl;
 }
 
 bool PluginLoader::processPendingReload() {
-    if (!m_pendingReload.exchange(false)) {
+    // Clear the counter and check if there were any pending reloads
+    if (m_pendingReload.exchange(0) == 0) {
         return false;
     }
 
@@ -229,6 +230,8 @@ bool PluginLoader::processPendingReload() {
         return true;
     } else {
         std::cerr << "Failed to reload plugin: " << path << std::endl;
+        // Disable auto-reload on failure to avoid repeated failed attempts
+        enableAutoReload(false);
     }
 
     return false;

@@ -1,5 +1,6 @@
 #include "hotplugpp/file_watcher.hpp"
 
+#include <cctype>
 #include <iostream>
 
 #include <efsw/efsw.hpp>
@@ -39,10 +40,13 @@ bool FileWatcher::watchFile(const std::string& filePath, FileChangeCallback call
         return false;
     }
 
+    // Normalize the path for consistent lookups
+    std::string normalizedPath = normalizePath(filePath);
+
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    std::string directory = getDirectory(filePath);
-    std::string filename = getFilename(filePath);
+    std::string directory = getDirectory(normalizedPath);
+    std::string filename = getFilename(normalizedPath);
 
     if (directory.empty() || filename.empty()) {
         std::cerr << "Invalid file path: " << filePath << std::endl;
@@ -61,16 +65,18 @@ bool FileWatcher::watchFile(const std::string& filePath, FileChangeCallback call
         m_directoryWatches[directory] = watchId;
     }
 
-    // Register the callback for this specific file
-    m_fileCallbacks[filePath] = std::move(callback);
+    // Register the callback for this specific file (using normalized path)
+    m_fileCallbacks[normalizedPath] = std::move(callback);
 
     return true;
 }
 
 void FileWatcher::unwatchFile(const std::string& filePath) {
+    std::string normalizedPath = normalizePath(filePath);
+
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    auto callbackIt = m_fileCallbacks.find(filePath);
+    auto callbackIt = m_fileCallbacks.find(normalizedPath);
     if (callbackIt == m_fileCallbacks.end()) {
         return;
     }
@@ -78,7 +84,7 @@ void FileWatcher::unwatchFile(const std::string& filePath) {
     m_fileCallbacks.erase(callbackIt);
 
     // Check if we need to remove the directory watch
-    std::string directory = getDirectory(filePath);
+    std::string directory = getDirectory(normalizedPath);
 
     // Check if there are other files being watched in this directory
     bool hasOtherFiles = false;
@@ -99,8 +105,9 @@ void FileWatcher::unwatchFile(const std::string& filePath) {
 }
 
 bool FileWatcher::isWatching(const std::string& filePath) const {
+    std::string normalizedPath = normalizePath(filePath);
     std::lock_guard<std::mutex> lock(m_mutex);
-    return m_fileCallbacks.find(filePath) != m_fileCallbacks.end();
+    return m_fileCallbacks.find(normalizedPath) != m_fileCallbacks.end();
 }
 
 void FileWatcher::start() {
@@ -135,19 +142,54 @@ std::string FileWatcher::getFilename(const std::string& filePath) const {
     return filePath.substr(lastSlash + 1);
 }
 
+std::string FileWatcher::normalizePath(const std::string& path) const {
+    std::string normalized = path;
+    // Replace backslashes with forward slashes for consistency
+    for (char& c : normalized) {
+        if (c == '\\') {
+            c = '/';
+        }
+    }
+    // Remove duplicate slashes
+    std::string result;
+    result.reserve(normalized.size());
+    bool lastWasSlash = false;
+    for (char c : normalized) {
+        if (c == '/') {
+            if (!lastWasSlash) {
+                result.push_back(c);
+            }
+            lastWasSlash = true;
+        } else {
+            result.push_back(c);
+            lastWasSlash = false;
+        }
+    }
+    // Remove trailing slash if present, but preserve:
+    // - Root "/" (Unix)
+    // - Drive root "C:/" (Windows)
+    if (result.size() > 1 && result.back() == '/') {
+        // Check if this is a Windows drive root (e.g., "C:/")
+        bool isWindowsDriveRoot = (result.size() == 3 && std::isalpha(result[0]) &&
+                                   result[1] == ':');
+        if (!isWindowsDriveRoot) {
+            result.pop_back();
+        }
+    }
+    return result;
+}
+
 void FileWatcher::onFileChanged(const std::string& dir, const std::string& filename) {
     std::string fullPath;
     // Handle case where dir is empty or current directory
     if (dir.empty() || dir == "." || dir == "./") {
         fullPath = filename;
     } else {
-        fullPath = dir;
-        // Normalize path separator
-        if (fullPath.back() != '/' && fullPath.back() != '\\') {
-            fullPath += '/';
-        }
-        fullPath += filename;
+        fullPath = dir + "/" + filename;
     }
+
+    // Normalize the path for consistent lookups
+    fullPath = normalizePath(fullPath);
 
     FileChangeCallback callback;
     {
@@ -160,6 +202,9 @@ void FileWatcher::onFileChanged(const std::string& dir, const std::string& filen
 
     if (callback) {
         // Call the callback outside of the lock to avoid potential deadlocks
+        // Note: If unwatchFile() is called between lock release and callback
+        // invocation, the callback will still fire. This is intentional to
+        // avoid holding the lock during callback execution.
         callback(fullPath);
     }
 }
