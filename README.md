@@ -51,10 +51,14 @@ See [docs/TUTORIAL.md](docs/TUTORIAL.md) for a complete step-by-step guide.
 
 int main() {
     hotplugpp::PluginLoader loader;
-    loader.loadPlugin("./libmy_plugin.so");
+    if (!loader.loadPlugin("./libmy_plugin.so")) {
+        return 1;
+    }
     
     auto* plugin = loader.getPlugin();
-    plugin->onUpdate(0.016f);
+    if (plugin) {
+        plugin->onUpdate(0.016f);
+    }
     loader.checkAndReload();  // Detects and reloads modified plugins
     
     return 0;
