@@ -48,4 +48,3 @@ jobs:
         with:
           use-quiet-mode: 'yes'
           config-file: '.github/mlc_config.json'
-        continue-on-error: true

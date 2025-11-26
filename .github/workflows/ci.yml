@@ -48,10 +48,13 @@ jobs:
       - name: Cache CMake build
         uses: actions/cache@v4
         with:
-          path: build
-          key: ${{ runner.os }}-${{ matrix.compiler }}-build-${{ hashFiles('**/CMakeLists.txt', 'src/**', 'include/**', 'tests/**') }}
+          path: |
+            build/CMakeCache.txt
+            build/CMakeFiles
+            build/_deps
+          key: ${{ runner.os }}-${{ matrix.compiler }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.compiler }}-build-
+            ${{ runner.os }}-${{ matrix.compiler }}-cmake-
 
       - name: Configure CMake (Unix)
         if: runner.os != 'Windows'
@@ -63,7 +66,7 @@ jobs:
 
       - name: Configure CMake (Windows)
         if: runner.os == 'Windows'
-        run: cmake -B build -S .
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel

@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Script to validate file naming conventions
-# All .cpp and .hpp files must follow either PascalCase or snake_case naming convention
+# All .cpp, .hpp, and .h files must follow either PascalCase or snake_case naming convention
 #
 
 set -e
@@ -50,7 +50,7 @@ while IFS= read -r -d '' file; do
         echo "       Expected: PascalCase (e.g., PluginLoader.cpp) or snake_case (e.g., host_app.cpp)"
         error_count=$((error_count + 1))
     fi
-done < <(find "$ROOT_DIR" -type f \( -name "*.cpp" -o -name "*.hpp" \) \
+done < <(find "$ROOT_DIR" -type f \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) \
     -not -path "*/build/*" \
     -not -path "*/.git/*" \
     -not -path "*/_codeql*" \
