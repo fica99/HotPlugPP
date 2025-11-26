@@ -136,12 +136,18 @@ std::string FileWatcher::getFilename(const std::string& filePath) const {
 }
 
 void FileWatcher::onFileChanged(const std::string& dir, const std::string& filename) {
-    std::string fullPath = dir;
-    // Normalize path separator
-    if (!fullPath.empty() && fullPath.back() != '/' && fullPath.back() != '\\') {
-        fullPath += '/';
+    std::string fullPath;
+    // Handle case where dir is empty or current directory
+    if (dir.empty() || dir == "." || dir == "./") {
+        fullPath = filename;
+    } else {
+        fullPath = dir;
+        // Normalize path separator
+        if (fullPath.back() != '/' && fullPath.back() != '\\') {
+            fullPath += '/';
+        }
+        fullPath += filename;
     }
-    fullPath += filename;
 
     FileChangeCallback callback;
     {
