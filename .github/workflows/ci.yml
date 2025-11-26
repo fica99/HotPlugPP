@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -B build -S .
+
+      - name: Build
+        run: cmake --build build
+
+  check-format:
+    name: Check Code Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Check code formatting
+        run: cmake -P scripts/check-format.cmake
+
+  check-filenames:
+    name: Check File Names
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate C++ file naming conventions
+        run: |
+          #!/bin/bash
+          set -e
+          
+          # Find all C++ source and header files
+          files=$(find src include examples -type f \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) 2>/dev/null || true)
+          
+          errors=0
+          
+          for file in $files; do
+            filename=$(basename "$file")
+            # Extract name without extension
+            name="${filename%.*}"
+            
+            # Check if filename follows valid naming conventions:
+            # 1. PascalCase: starts with uppercase, alphanumeric only (e.g., PluginLoader, IPlugin)
+            # 2. snake_case: lowercase with underscores (e.g., host_app, main_entry)
+            # Invalid: mixedCase starting lowercase, SCREAMING_CASE, kebab-case, spaces
+            
+            is_pascal_case=false
+            is_snake_case=false
+            
+            if [[ "$name" =~ ^[A-Z][a-zA-Z0-9]*$ ]]; then
+              is_pascal_case=true
+            fi
+            
+            if [[ "$name" =~ ^[a-z][a-z0-9_]*$ ]]; then
+              is_snake_case=true
+            fi
+            
+            if [[ "$is_pascal_case" == false && "$is_snake_case" == false ]]; then
+              echo "ERROR: File '$file' does not follow naming conventions"
+              echo "       Expected: PascalCase (e.g., PluginLoader.cpp) or snake_case (e.g., host_app.cpp)"
+              errors=$((errors + 1))
+            fi
+          done
+          
+          if [ $errors -gt 0 ]; then
+            echo ""
+            echo "Found $errors file(s) with incorrect naming."
+            echo "C++ files should use either:"
+            echo "  - PascalCase for class files (e.g., PluginLoader.cpp, IPlugin.hpp)"
+            echo "  - snake_case for main/utility files (e.g., host_app.cpp)"
+            exit 1
+          fi
+          
+          echo "All C++ files follow the naming conventions!"
