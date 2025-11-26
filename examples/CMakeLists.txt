@@ -1,6 +1,6 @@
 # Sample Plugin (shared library)
 add_library(sample_plugin SHARED
-    sample_plugin/SamplePlugin.cpp
+    sample_plugin/sample_plugin.cpp
 )
 
 target_include_directories(sample_plugin PRIVATE
@@ -26,7 +26,7 @@ endif()
 
 # Math Plugin (shared library)
 add_library(math_plugin SHARED
-    math_plugin/MathPlugin.cpp
+    math_plugin/math_plugin.cpp
 )
 
 target_include_directories(math_plugin PRIVATE
