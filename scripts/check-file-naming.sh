@@ -37,6 +37,7 @@ while IFS= read -r -d '' file; do
 done < <(find "$ROOT_DIR" -type f \( -name "*.cpp" -o -name "*.hpp" \) \
     -not -path "*/build/*" \
     -not -path "*/.git/*" \
+    -not -path "*/_codeql*" \
     -print0)
 
 echo ""
