@@ -2,34 +2,14 @@
 
 #include "i_plugin.hpp"
 
-#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
 
-// Platform-specific includes
-#ifdef _WIN32
-#include <windows.h>
-typedef HMODULE LibraryHandle;
-#else
-#include <dlfcn.h>
-typedef void* LibraryHandle;
-#endif
-
 namespace hotplugpp {
 
-/**
- * @brief Plugin metadata and handle
- */
-struct PluginInfo {
-    std::string path;
-    LibraryHandle handle = nullptr;
-    IPlugin* instance = nullptr;
-    CreatePluginFunc createFunc = nullptr;
-    DestroyPluginFunc destroyFunc = nullptr;
-    std::chrono::system_clock::time_point lastModified;
-    bool isLoaded = false;
-};
+// Forward declaration for PIMPL pattern
+struct PluginInfo;
 
 /**
  * @brief Manages dynamic loading, unloading, and hot-reloading of plugins
@@ -86,42 +66,8 @@ class PluginLoader {
     void setReloadCallback(std::function<void()> callback);
 
   private:
-    PluginInfo m_pluginInfo;
+    std::unique_ptr<PluginInfo> m_pluginInfo;
     std::function<void()> m_reloadCallback;
-
-    /**
-     * @brief Get the last modification time of a file
-     * @param path File path
-     * @return Last modification time
-     */
-    std::chrono::system_clock::time_point getFileModificationTime(const std::string& path);
-
-    /**
-     * @brief Load a shared library
-     * @param path Library path
-     * @return Library handle or nullptr on failure
-     */
-    LibraryHandle loadLibrary(const std::string& path);
-
-    /**
-     * @brief Unload a shared library
-     * @param handle Library handle
-     */
-    void unloadLibrary(LibraryHandle handle);
-
-    /**
-     * @brief Get a function pointer from a library
-     * @param handle Library handle
-     * @param name Function name
-     * @return Function pointer or nullptr on failure
-     */
-    void* getFunction(LibraryHandle handle, const std::string& name);
-
-    /**
-     * @brief Get the last error message from dynamic library loading
-     * @return Error message string
-     */
-    std::string getLastError();
 };
 
 } // namespace hotplugpp
