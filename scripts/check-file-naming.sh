@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Script to validate file naming conventions
-# All .cpp and .hpp files must follow snake_case naming convention
+# All .cpp, .hpp, and .h files must follow either PascalCase or snake_case naming convention
 #
 
 set -e
@@ -16,9 +16,6 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-# Pattern for valid snake_case file names (lowercase letters, numbers, underscores)
-SNAKE_CASE_PATTERN='^[a-z][a-z0-9_]*\.(cpp|hpp)$'
-
 error_count=0
 
 echo "Checking file naming conventions..."
@@ -30,13 +27,30 @@ while IFS= read -r -d '' file; do
     # Get just the filename without path
     filename=$(basename "$file")
     
-    # Check if filename matches snake_case pattern
-    if ! [[ "$filename" =~ $SNAKE_CASE_PATTERN ]]; then
-        echo -e "${RED}ERROR${NC}: '$file' does not follow snake_case naming convention"
-        echo "       Expected format: lowercase_with_underscores.cpp or .hpp"
+    # Extract name without extension
+    name="${filename%.*}"
+    
+    # Check if filename follows valid naming conventions:
+    # 1. PascalCase: starts with uppercase, alphanumeric only (e.g., PluginLoader, IPlugin)
+    # 2. snake_case: lowercase with underscores (e.g., host_app, main_entry)
+    
+    is_pascal_case=false
+    is_snake_case=false
+    
+    if [[ "$name" =~ ^[A-Z][a-zA-Z0-9]*$ ]]; then
+        is_pascal_case=true
+    fi
+    
+    if [[ "$name" =~ ^[a-z]([a-z0-9_]*[a-z0-9])?$ ]]; then
+        is_snake_case=true
+    fi
+    
+    if [[ "$is_pascal_case" == false && "$is_snake_case" == false ]]; then
+        echo -e "${RED}ERROR${NC}: '$file' does not follow naming conventions"
+        echo "       Expected: PascalCase (e.g., PluginLoader.cpp) or snake_case (e.g., host_app.cpp)"
         error_count=$((error_count + 1))
     fi
-done < <(find "$ROOT_DIR" -type f \( -name "*.cpp" -o -name "*.hpp" \) \
+done < <(find "$ROOT_DIR" -type f \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) \
     -not -path "*/build/*" \
     -not -path "*/.git/*" \
     -not -path "*/_codeql*" \
@@ -44,9 +58,12 @@ done < <(find "$ROOT_DIR" -type f \( -name "*.cpp" -o -name "*.hpp" \) \
 
 echo ""
 if [ $error_count -eq 0 ]; then
-    echo -e "${GREEN}SUCCESS${NC}: All files follow snake_case naming convention"
+    echo -e "${GREEN}SUCCESS${NC}: All files follow the naming conventions (PascalCase or snake_case)"
     exit 0
 else
     echo -e "${RED}FAILED${NC}: $error_count file(s) have incorrect naming"
+    echo "C++ files should use either:"
+    echo "  - PascalCase for class files (e.g., PluginLoader.cpp, IPlugin.hpp)"
+    echo "  - snake_case for main/utility files (e.g., host_app.cpp)"
     exit 1
 fi
