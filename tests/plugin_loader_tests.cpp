@@ -289,5 +289,36 @@ TEST_F(PluginLoaderTest, MultipleLoadUnloadCycles) {
     }
 }
 
+// ============================================================================
+// Path Validation Tests
+// ============================================================================
+
+TEST_F(PluginLoaderTest, RejectsDirectoryPath) {
+    PluginLoader loader;
+    // TEST_PLUGIN_DIR is a directory, not a file
+    EXPECT_FALSE(loader.loadPlugin(TEST_PLUGIN_DIR));
+    EXPECT_FALSE(loader.isLoaded());
+}
+
+TEST_F(PluginLoaderTest, RejectsInvalidExtension) {
+    // Create a temporary file with wrong extension
+    std::string invalidPath = "/tmp/test_plugin.txt";
+    std::ofstream file(invalidPath);
+    file << "This is not a valid shared library";
+    file.close();
+    
+    PluginLoader loader;
+    EXPECT_FALSE(loader.loadPlugin(invalidPath));
+    EXPECT_FALSE(loader.isLoaded());
+    
+    std::remove(invalidPath.c_str());
+}
+
+TEST_F(PluginLoaderTest, RejectsNonExistentPath) {
+    PluginLoader loader;
+    EXPECT_FALSE(loader.loadPlugin("/path/that/does/not/exist/plugin.so"));
+    EXPECT_FALSE(loader.isLoaded());
+}
+
 } // namespace tests
 } // namespace hotplugpp
