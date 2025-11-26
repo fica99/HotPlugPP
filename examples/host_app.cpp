@@ -1,6 +1,7 @@
 #include "hotplugpp/PluginLoader.hpp"
 
 #include <chrono>
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -67,7 +68,7 @@ int main(int argc, char* argv[]) {
     const auto frameDuration = std::chrono::microseconds(
         static_cast<long long>(deltaTime * 1000000));
 
-    int frameCount = 0;
+    uint64_t frameCount = 0;
     while (true) {
         auto frameStart = std::chrono::high_resolution_clock::now();
 

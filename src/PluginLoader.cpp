@@ -1,8 +1,7 @@
 #include "hotplugpp/PluginLoader.hpp"
 
 #include <iostream>
-
-#include <sys/stat.h>
+#include <utility>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -10,9 +9,11 @@
 #include <dlfcn.h>
 #endif
 
+#include <sys/stat.h>
+
 namespace hotplugpp {
 
-PluginLoader::PluginLoader() : m_reloadCallback(nullptr) {}
+PluginLoader::PluginLoader() = default;
 
 PluginLoader::~PluginLoader() {
     unloadPlugin();
@@ -143,7 +144,7 @@ std::string PluginLoader::getPluginPath() const {
 }
 
 void PluginLoader::setReloadCallback(std::function<void()> callback) {
-    m_reloadCallback = callback;
+    m_reloadCallback = std::move(callback);
 }
 
 std::chrono::system_clock::time_point
@@ -195,6 +196,10 @@ std::string PluginLoader::getLastError() {
     size_t size = FormatMessageA(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+
+    if (size == 0 || messageBuffer == nullptr) {
+        return "Unknown error (code: " + std::to_string(error) + ")";
+    }
 
     std::string message(messageBuffer, size);
     LocalFree(messageBuffer);

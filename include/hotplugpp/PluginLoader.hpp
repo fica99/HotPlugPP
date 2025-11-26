@@ -23,16 +23,12 @@ namespace hotplugpp {
  */
 struct PluginInfo {
     std::string path;
-    LibraryHandle handle;
-    IPlugin* instance;
-    CreatePluginFunc createFunc;
-    DestroyPluginFunc destroyFunc;
+    LibraryHandle handle = nullptr;
+    IPlugin* instance = nullptr;
+    CreatePluginFunc createFunc = nullptr;
+    DestroyPluginFunc destroyFunc = nullptr;
     std::chrono::system_clock::time_point lastModified;
-    bool isLoaded;
-
-    PluginInfo()
-        : handle(nullptr), instance(nullptr), createFunc(nullptr), destroyFunc(nullptr),
-          isLoaded(false) {}
+    bool isLoaded = false;
 };
 
 /**

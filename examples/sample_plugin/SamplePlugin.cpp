@@ -1,5 +1,6 @@
 #include "hotplugpp/IPlugin.hpp"
 
+#include <cstdint>
 #include <iostream>
 
 /**
@@ -45,7 +46,7 @@ class SamplePlugin : public hotplugpp::IPlugin {
     }
 
   private:
-    int m_counter;
+    uint64_t m_counter;
     float m_totalTime;
 };
 
