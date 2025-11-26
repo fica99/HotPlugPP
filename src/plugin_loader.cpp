@@ -1,8 +1,10 @@
 #include "hotplugpp/plugin_loader.hpp"
+
 #include "hotplugpp/logger.hpp"
 
-#include <spdlog/fmt/fmt.h>
 #include <utility>
+
+#include <spdlog/fmt/fmt.h>
 
 #ifdef _WIN32
 #include <windows.h>
