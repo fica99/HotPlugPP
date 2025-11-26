@@ -121,3 +121,13 @@ target_compile_definitions(integration_tests PRIVATE
 )
 add_dependencies(integration_tests test_plugin)
 gtest_discover_tests(integration_tests)
+
+# Logger tests
+add_executable(logger_tests
+    logger_tests.cpp
+)
+target_link_libraries(logger_tests PRIVATE
+    GTest::gtest_main
+    hotplugpp
+)
+gtest_discover_tests(logger_tests)

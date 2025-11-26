@@ -1,11 +1,15 @@
 # Core library
 add_library(hotplugpp STATIC
     plugin_loader.cpp
+    logger.cpp
 )
 
 target_include_directories(hotplugpp PUBLIC
     ${CMAKE_SOURCE_DIR}/include
 )
+
+# Link spdlog
+target_link_libraries(hotplugpp PUBLIC spdlog::spdlog)
 
 # Link platform-specific libraries
 if(UNIX AND NOT APPLE)

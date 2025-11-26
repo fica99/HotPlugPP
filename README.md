@@ -10,6 +10,7 @@ A lightweight, cross-platform plugin system in modern C++ with support for runti
 - 🎯 **Clean Interface**: Simple, intuitive plugin API
 - 🛠️ **Modern C++**: Uses C++17 features for clean, maintainable code
 - 🚀 **Lightweight**: Minimal dependencies and overhead
+- 📝 **Configurable Logging**: Built-in logging with level control (Debug/Release aware)
 
 ## Quick Start
 
@@ -66,6 +67,38 @@ int main() {
 ```
 
 See [API](https://github.com/fica99/HotPlugPP/wiki/API) for complete API documentation.
+
+## Logging
+
+HotPlugPP includes built-in logging via [spdlog](https://github.com/gabime/spdlog). Logging behavior differs based on build type:
+
+- **Debug builds**: All log levels enabled (trace, debug, info, warn, error, critical)
+- **Release builds**: Only warn, error, and critical levels are active by default
+
+### Configuring Log Level
+
+```cpp
+#include "hotplugpp/logger.hpp"
+
+// Set log level at runtime
+hotplugpp::Logger::instance().setLevel(hotplugpp::LogLevel::Debug);
+
+// Initialize with custom pattern
+hotplugpp::Logger::instance().init(hotplugpp::LogLevel::Info, "[%l] %v");
+```
+
+### Using Logging Macros
+
+```cpp
+#include "hotplugpp/logger.hpp"
+#include <fmt/core.h>
+
+HOTPLUGPP_LOG_DEBUG("Plugin file modified, reloading...");
+HOTPLUGPP_LOG_INFO(fmt::format("Plugin loaded: {}", pluginName));
+HOTPLUGPP_LOG_ERROR(fmt::format("Failed to load plugin: {}", path));
+```
+
+To enable full logging in Release builds, define `HOTPLUGPP_ENABLE_LOGGING` before including the header.
 
 ## Platform Support
 
