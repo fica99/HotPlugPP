@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <string>
 
@@ -95,7 +96,7 @@ class Logger {
     Logger& operator=(Logger&&) = delete;
 
     std::shared_ptr<spdlog::logger> m_logger;
-    LogLevel m_level;
+    std::atomic<LogLevel> m_level;
 };
 
 // Convenience macros for logging

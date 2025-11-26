@@ -91,10 +91,11 @@ hotplugpp::Logger::instance().init(hotplugpp::LogLevel::Info, "[%l] %v");
 
 ```cpp
 #include "hotplugpp/logger.hpp"
+#include <fmt/core.h>
 
 HOTPLUGPP_LOG_DEBUG("Plugin file modified, reloading...");
-HOTPLUGPP_LOG_INFO("Plugin loaded: " + pluginName);
-HOTPLUGPP_LOG_ERROR("Failed to load plugin: " + path);
+HOTPLUGPP_LOG_INFO(fmt::format("Plugin loaded: {}", pluginName));
+HOTPLUGPP_LOG_ERROR(fmt::format("Failed to load plugin: {}", path));
 ```
 
 To enable full logging in Release builds, define `HOTPLUGPP_ENABLE_LOGGING` before including the header.

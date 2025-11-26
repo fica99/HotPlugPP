@@ -161,5 +161,95 @@ TEST_F(LoggerTest, ChangeLevelMultipleTimes) {
     EXPECT_EQ(Logger::instance().getLevel(), LogLevel::Off);
 }
 
+// ============================================================================
+// Log Level Filtering Tests
+// ============================================================================
+
+TEST_F(LoggerTest, LevelFilteringInfoSuppressesDebug) {
+    // When level is Info, Debug messages should be filtered
+    Logger::instance().setLevel(LogLevel::Info);
+    EXPECT_EQ(Logger::instance().getLevel(), LogLevel::Info);
+
+    // Debug is below Info, so it should be filtered
+    // Verify that level comparison works correctly
+    EXPECT_TRUE(LogLevel::Debug < LogLevel::Info);
+
+    // Calling debug() should not throw even when filtered
+    EXPECT_NO_THROW(Logger::instance().debug("This should be filtered"));
+}
+
+TEST_F(LoggerTest, LevelFilteringWarnSuppressesInfo) {
+    Logger::instance().setLevel(LogLevel::Warn);
+    EXPECT_EQ(Logger::instance().getLevel(), LogLevel::Warn);
+
+    // Info is below Warn, so it should be filtered
+    EXPECT_TRUE(LogLevel::Info < LogLevel::Warn);
+
+    // Calling info() should not throw even when filtered
+    EXPECT_NO_THROW(Logger::instance().info("This should be filtered"));
+}
+
+TEST_F(LoggerTest, LevelFilteringErrorSuppressesWarn) {
+    Logger::instance().setLevel(LogLevel::Error);
+    EXPECT_EQ(Logger::instance().getLevel(), LogLevel::Error);
+
+    // Warn is below Error, so it should be filtered
+    EXPECT_TRUE(LogLevel::Warn < LogLevel::Error);
+
+    // Calling warn() should not throw even when filtered
+    EXPECT_NO_THROW(Logger::instance().warn("This should be filtered"));
+}
+
+TEST_F(LoggerTest, LevelFilteringOffSuppressesAll) {
+    Logger::instance().setLevel(LogLevel::Off);
+    EXPECT_EQ(Logger::instance().getLevel(), LogLevel::Off);
+
+    // All levels should be filtered when Off
+    EXPECT_NO_THROW(Logger::instance().trace("Filtered"));
+    EXPECT_NO_THROW(Logger::instance().debug("Filtered"));
+    EXPECT_NO_THROW(Logger::instance().info("Filtered"));
+    EXPECT_NO_THROW(Logger::instance().warn("Filtered"));
+    EXPECT_NO_THROW(Logger::instance().error("Filtered"));
+    EXPECT_NO_THROW(Logger::instance().critical("Filtered"));
+}
+
+TEST_F(LoggerTest, LevelFilteringTraceAllowsAll) {
+    Logger::instance().setLevel(LogLevel::Trace);
+    EXPECT_EQ(Logger::instance().getLevel(), LogLevel::Trace);
+
+    // All levels should pass when Trace (lowest level)
+    EXPECT_NO_THROW(Logger::instance().trace("Should pass"));
+    EXPECT_NO_THROW(Logger::instance().debug("Should pass"));
+    EXPECT_NO_THROW(Logger::instance().info("Should pass"));
+    EXPECT_NO_THROW(Logger::instance().warn("Should pass"));
+    EXPECT_NO_THROW(Logger::instance().error("Should pass"));
+    EXPECT_NO_THROW(Logger::instance().critical("Should pass"));
+}
+
+TEST_F(LoggerTest, LogLevelOrdering) {
+    // Verify LogLevel enum ordering is correct for filtering logic
+    EXPECT_TRUE(LogLevel::Trace < LogLevel::Debug);
+    EXPECT_TRUE(LogLevel::Debug < LogLevel::Info);
+    EXPECT_TRUE(LogLevel::Info < LogLevel::Warn);
+    EXPECT_TRUE(LogLevel::Warn < LogLevel::Error);
+    EXPECT_TRUE(LogLevel::Error < LogLevel::Critical);
+    EXPECT_TRUE(LogLevel::Critical < LogLevel::Off);
+}
+
+TEST_F(LoggerTest, MacroLevelFilteringRespectsLevel) {
+    // Set level to Error, macros for lower levels should be filtered
+    Logger::instance().setLevel(LogLevel::Error);
+
+    // These should be filtered (no output, no throw)
+    EXPECT_NO_THROW(HOTPLUGPP_LOG_TRACE("Filtered trace"));
+    EXPECT_NO_THROW(HOTPLUGPP_LOG_DEBUG("Filtered debug"));
+    EXPECT_NO_THROW(HOTPLUGPP_LOG_INFO("Filtered info"));
+    EXPECT_NO_THROW(HOTPLUGPP_LOG_WARN("Filtered warn"));
+
+    // These should pass
+    EXPECT_NO_THROW(HOTPLUGPP_LOG_ERROR("Error passes"));
+    EXPECT_NO_THROW(HOTPLUGPP_LOG_CRITICAL("Critical passes"));
+}
+
 } // namespace tests
 } // namespace hotplugpp

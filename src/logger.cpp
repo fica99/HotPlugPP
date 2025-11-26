@@ -61,12 +61,12 @@ void Logger::init(LogLevel level, const std::string& pattern) {
 }
 
 void Logger::setLevel(LogLevel level) {
-    m_level = level;
+    m_level.store(level, std::memory_order_release);
     m_logger->set_level(toSpdlogLevel(level));
 }
 
 LogLevel Logger::getLevel() const {
-    return m_level;
+    return m_level.load(std::memory_order_acquire);
 }
 
 void Logger::trace(const std::string& message) {
