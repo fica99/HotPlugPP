@@ -23,6 +23,7 @@ function New-AgentWorktree {
 New-AgentWorktree -Role "planner"
 New-AgentWorktree -Role "implementer"
 New-AgentWorktree -Role "tester"
+New-AgentWorktree -Role "security-checker"
 New-AgentWorktree -Role "reviewer"
 New-AgentWorktree -Role "doc-checker"
 
