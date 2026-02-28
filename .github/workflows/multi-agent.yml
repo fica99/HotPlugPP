@@ -9,6 +9,19 @@ on:
         description: 'Issue number to process'
         required: true
         type: number
+      role:
+        description: 'Single agent role to run (leave empty for full pipeline)'
+        required: false
+        type: choice
+        default: ''
+        options:
+          - ''
+          - planner
+          - implementer
+          - tester
+          - security-checker
+          - reviewer
+          - doc-checker
 
 permissions:
   contents: write
@@ -42,20 +55,54 @@ jobs:
       - name: Install OpenAI Codex CLI
         run: npm install -g @openai/codex
 
+      - name: Restore handoff files for single-role run
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.role != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          REPO: ${{ github.repository }}
+        run: |
+          ARTIFACT_NAME="handoff-issue-${ISSUE_NUMBER}"
+          # Find the most recent workflow run that uploaded the handoff artifact for this issue,
+          # then download it so prior agents' outputs are available to the current agent.
+          RUN_ID=$(gh api "repos/${REPO}/actions/artifacts" \
+            --jq "[.artifacts[] | select(.name == \"${ARTIFACT_NAME}\" and .expired == false)] | sort_by(.created_at) | last | .workflow_run.id // empty" \
+            2>/dev/null || true)
+          if [ -n "$RUN_ID" ]; then
+            echo "Restoring handoffs from run ${RUN_ID}..."
+            mkdir -p ../HotPlugPP-handoff
+            gh run download "${RUN_ID}" --name "${ARTIFACT_NAME}" --dir ../HotPlugPP-handoff/ || echo "Warning: download failed, continuing without previous handoffs."
+          else
+            echo "No previous handoff artifact found for issue ${ISSUE_NUMBER}."
+          fi
+
       - name: Set up agent worktrees
-        run: pwsh ./scripts/setup-agent-worktrees.ps1
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+        run: ./scripts/setup-agent-worktrees.ps1 -IssueNumber ([int]($env:ISSUE_NUMBER -as [int]))
+        shell: pwsh
 
       - name: Run multi-agent pipeline
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+          SINGLE_ROLE: ${{ github.event.inputs.role }}
         run: |
-          pwsh ./scripts/run-multi-agent.ps1 `
-            -IssueNumber ([int]$env:ISSUE_NUMBER) `
-            -PublishToGitHub `
-            -BaseRoot . `
-            -HandoffRoot ../HotPlugPP-handoff
+          $cmdArgs = @(
+            "-IssueNumber", ([int]$env:ISSUE_NUMBER),
+            "-BaseRoot", ".",
+            "-HandoffRoot", "../HotPlugPP-handoff"
+          )
+          $role = $env:SINGLE_ROLE
+          # doc-checker is the final agent and creates the PR, so it always needs -PublishToGitHub
+          if (-not $role -or $role -eq "doc-checker") {
+            $cmdArgs += "-PublishToGitHub"
+          }
+          if ($role) {
+            $cmdArgs += @("-SingleRole", $role)
+          }
+          & ./scripts/run-multi-agent.ps1 @cmdArgs
         shell: pwsh
 
       - name: Upload handoff artifacts
