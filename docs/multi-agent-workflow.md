@@ -24,6 +24,20 @@ This creates separate branches and directories for:
 - tester
 - reviewer
 
+## 2.1 Optional: Run all roles automatically
+
+Use the orchestrator script to run Planner -> Implementer -> Tester -> Reviewer end-to-end:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run-multi-agent.ps1 -IssueNumber 18
+```
+
+Optional flags:
+- `-IssueContextFile <path>` when GitHub CLI is unavailable.
+- `-PublishToGitHub` to post role outputs as issue comments (requires `gh auth login`).
+- `-Model <name>` to force a Codex model.
+- `-DryRun` to validate pipeline files/prompts without calling Codex.
+
 ## 3. Execute role order
 
 1. Planner: define scope, non-goals, acceptance checks.
