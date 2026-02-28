@@ -9,6 +9,11 @@ on:
         description: 'Issue number to process'
         required: true
         type: number
+      base_branch:
+        description: 'Base branch to create task branches from'
+        required: false
+        type: string
+        default: 'main'
       role:
         description: 'Single agent role to run (leave empty for full pipeline)'
         required: false
@@ -79,7 +84,11 @@ jobs:
       - name: Set up agent worktrees
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
-        run: ./scripts/setup-agent-worktrees.ps1 -IssueNumber ([int]($env:ISSUE_NUMBER -as [int]))
+          BASE_BRANCH: ${{ github.event.inputs.base_branch || 'main' }}
+        run: |
+          & ./scripts/setup-agent-worktrees.ps1 `
+            -IssueNumber ([int]$env:ISSUE_NUMBER) `
+            -BaseBranch $env:BASE_BRANCH
         shell: pwsh
 
       - name: Run multi-agent pipeline
