@@ -12,15 +12,40 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Resolve-CommandPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [string[]]$FallbackPaths = @()
+    )
+
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    foreach ($path in $FallbackPaths) {
+        if ($path -and (Test-Path $path)) {
+            return $path
+        }
+    }
+
+    return $null
+}
+
 function Require-Command {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$Name
+        [string]$Name,
+        [string[]]$FallbackPaths = @()
     )
 
-    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+    $resolved = Resolve-CommandPath -Name $Name -FallbackPaths $FallbackPaths
+    if (-not $resolved) {
         throw "Required command not found: $Name"
     }
+
+    return $resolved
 }
 
 function Resolve-RolePath {
@@ -42,9 +67,8 @@ function Get-IssueContext {
         return Get-Content -Raw $IssueContextFile
     }
 
-    $hasGh = [bool](Get-Command gh -ErrorAction SilentlyContinue)
-    if ($hasGh) {
-        return gh issue view $IssueNumber --comments
+    if ($script:GhCommand) {
+        return & $script:GhCommand issue view $IssueNumber --comments
     }
 
     $template = @"
@@ -82,7 +106,7 @@ function Invoke-CodexRole {
         $args += @("-m", $Model)
     }
 
-    Get-Content -Raw $promptFile | & codex @args
+    Get-Content -Raw $promptFile | & $script:CodexCommand @args
 }
 
 function Publish-HandoffComment {
@@ -97,7 +121,7 @@ function Publish-HandoffComment {
         return
     }
 
-    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+    if (-not $script:GhCommand) {
         Write-Warning "Skipping GitHub comment for ${Role}: gh not found."
         return
     }
@@ -107,10 +131,16 @@ function Publish-HandoffComment {
     $content = Get-Content -Raw $OutputFile
     Set-Content -Path $bodyFile -Value ($header + "`n" + $content) -Encoding UTF8
 
-    gh issue comment $IssueNumber --body-file $bodyFile | Out-Null
+    & $script:GhCommand issue comment $IssueNumber --body-file $bodyFile | Out-Null
 }
 
-Require-Command -Name "codex"
+$ghFallbacks = @(
+    "C:\Program Files\GitHub CLI\gh.exe",
+    (Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI\gh.exe")
+)
+
+$script:CodexCommand = Require-Command -Name "codex"
+$script:GhCommand = Resolve-CommandPath -Name "gh" -FallbackPaths $ghFallbacks
 
 $rootPath = (Resolve-Path $BaseRoot).Path
 $HandoffDir = Join-Path $rootPath $HandoffRoot
