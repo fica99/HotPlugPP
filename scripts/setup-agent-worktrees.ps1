@@ -25,16 +25,24 @@ function New-AgentWorktree {
             Write-Warning "Could not remove existing worktree at '$worktreePath': $removeOut"
         }
     }
-    if (git branch --list $branchName) {
-        Write-Host "Deleting existing branch '$branchName'..."
-        $deleteOut = git branch -D $branchName 2>&1
+
+    $localBranchExists = [bool](git branch --list $branchName)
+    if (-not $localBranchExists) {
+        # Fetch from remote if available, creating a local tracking branch
+        git fetch origin "${branchName}:${branchName}" 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Could not delete existing branch '$branchName': $deleteOut"
+            Write-Host "Remote branch '$branchName' not found, will create fresh."
         }
+        $localBranchExists = [bool](git branch --list $branchName)
     }
 
-    Write-Host "Creating worktree for role '$Role'..."
-    git worktree add $worktreePath -b $branchName $BaseBranch
+    if ($localBranchExists) {
+        Write-Host "Creating worktree for role '$Role' from existing branch '$branchName'..."
+        git worktree add $worktreePath $branchName
+    } else {
+        Write-Host "Creating worktree for role '$Role' (fresh branch from $BaseBranch)..."
+        git worktree add $worktreePath -b $branchName $BaseBranch
+    }
 }
 
 New-AgentWorktree -Role "planner"

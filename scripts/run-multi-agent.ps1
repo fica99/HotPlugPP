@@ -5,6 +5,7 @@ param(
     [string]$BaseRoot = ".",
     [string]$HandoffRoot = "..\HotPlugPP-handoff",
     [string]$Model = "",
+    [string]$SingleRole = "",
     [switch]$PublishToGitHub,
     [switch]$DryRun,
     [int]$MaxIterations = 3
@@ -52,13 +53,15 @@ function Require-Command {
 function Resolve-RolePath {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$Role
+        [string]$Role,
+        [switch]$Lenient
     )
 
     $leaf = Split-Path -Leaf (Resolve-Path $BaseRoot)
     $issueSuffix = if ($IssueNumber -gt 0) { "-issue-$IssueNumber" } else { "" }
     $candidate = Join-Path (Split-Path -Parent (Resolve-Path $BaseRoot)) ($leaf + "-" + $Role + $issueSuffix)
     if (-not (Test-Path $candidate)) {
+        if ($Lenient) { return $candidate }
         throw "Role worktree not found: $candidate. Run scripts/setup-agent-worktrees.ps1 -IssueNumber $IssueNumber first."
     }
     return (Resolve-Path $candidate).Path
@@ -194,12 +197,13 @@ $issueContext = Get-IssueContext
 $issueFile = Join-Path $HandoffDir ("issue-$IssueNumber-context.md")
 Set-Content -Path $issueFile -Value $issueContext -Encoding UTF8
 
-$plannerDir = Resolve-RolePath -Role "planner"
-$implementerDir = Resolve-RolePath -Role "implementer"
-$testerDir = Resolve-RolePath -Role "tester"
-$securityCheckerDir = Resolve-RolePath -Role "security-checker"
-$reviewerDir = Resolve-RolePath -Role "reviewer"
-$docCheckerDir = Resolve-RolePath -Role "doc-checker"
+$allowMissingWorktrees = [bool]$SingleRole
+$plannerDir = Resolve-RolePath -Role "planner" -Lenient:$allowMissingWorktrees
+$implementerDir = Resolve-RolePath -Role "implementer" -Lenient:$allowMissingWorktrees
+$testerDir = Resolve-RolePath -Role "tester" -Lenient:$allowMissingWorktrees
+$securityCheckerDir = Resolve-RolePath -Role "security-checker" -Lenient:$allowMissingWorktrees
+$reviewerDir = Resolve-RolePath -Role "reviewer" -Lenient:$allowMissingWorktrees
+$docCheckerDir = Resolve-RolePath -Role "doc-checker" -Lenient:$allowMissingWorktrees
 
 $plannerOut = Join-Path $HandoffDir ("issue-$IssueNumber-planner.md")
 $implementerOut = Join-Path $HandoffDir ("issue-$IssueNumber-implementer.md")
@@ -377,6 +381,98 @@ Task:
   - Remaining risks or assumptions
 "@
 
+function Publish-PullRequest {
+    if (-not ($PublishToGitHub -and $script:GhCommand)) { return }
+    Write-Host "Creating pull request from implementer branch..."
+    $implBranch = & git -C $implementerDir rev-parse --abbrev-ref HEAD 2>$null
+    if ($implBranch -and $implBranch -ne "HEAD") {
+        $pending = & git -C $implementerDir status --porcelain 2>$null
+        if ($pending) {
+            & git -C $implementerDir add -A | Out-Null
+            & git -C $implementerDir commit -m "feat: automated fix for issue #$IssueNumber" | Out-Null
+        }
+        $pushOutput = & git -C $implementerDir push origin $implBranch 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Failed to push branch '$implBranch'. Skipping PR creation. Error: $pushOutput"
+        } else {
+            $prResult = & $script:GhCommand pr create `
+                --title "fix: automated resolution of issue #$IssueNumber" `
+                --body "Closes #$IssueNumber" `
+                --base main `
+                --head $implBranch 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "PR created: $prResult"
+                & $script:GhCommand pr merge --auto --squash 2>&1 | Out-Null
+                Write-Host "Auto-merge enabled."
+            } else {
+                Write-Warning "PR creation failed (PR may already exist). Output: $prResult"
+            }
+        }
+    }
+}
+
+function Publish-RoleBranch {
+    param([Parameter(Mandatory = $true)][string]$RoleDir)
+    if (-not ($PublishToGitHub -and $script:GhCommand)) { return }
+    $branch = & git -C $RoleDir rev-parse --abbrev-ref HEAD 2>$null
+    if (-not $branch -or $branch -eq "HEAD") { return }
+    $pending = & git -C $RoleDir status --porcelain 2>$null
+    if ($pending) {
+        & git -C $RoleDir add -A | Out-Null
+        & git -C $RoleDir commit -m "auto: agent checkpoint" 2>&1 | Out-Null
+    }
+    & git -C $RoleDir push origin $branch 2>&1 | Out-Null
+}
+
+if ($SingleRole) {
+    switch ($SingleRole.ToLower()) {
+        "planner" {
+            Write-Host "Running Planner (single-role mode)..."
+            Invoke-CodexRole -Role "planner" -RolePrompt $plannerPrompt -RoleDir $plannerDir -OutputFile $plannerOut
+            Publish-HandoffComment -Role "planner" -OutputFile $plannerOut
+            Publish-RoleBranch -RoleDir $plannerDir
+        }
+        "implementer" {
+            Write-Host "Running Implementer (single-role mode)..."
+            Invoke-CodexRole -Role "implementer" -RolePrompt $implementerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+            Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+            Publish-RoleBranch -RoleDir $implementerDir
+        }
+        "tester" {
+            if (Test-Path $implementerDir) { Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $testerDir }
+            Write-Host "Running Tester (single-role mode)..."
+            Invoke-CodexRole -Role "tester" -RolePrompt $testerPrompt -RoleDir $testerDir -OutputFile $testerOut
+            Publish-HandoffComment -Role "tester" -OutputFile $testerOut
+            Publish-RoleBranch -RoleDir $testerDir
+        }
+        "security-checker" {
+            if (Test-Path $testerDir) { Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $securityCheckerDir }
+            Write-Host "Running SecurityChecker (single-role mode)..."
+            Invoke-CodexRole -Role "security-checker" -RolePrompt $securityCheckerPrompt -RoleDir $securityCheckerDir -OutputFile $securityCheckerOut
+            Publish-HandoffComment -Role "security-checker" -OutputFile $securityCheckerOut
+            Publish-RoleBranch -RoleDir $securityCheckerDir
+        }
+        "reviewer" {
+            if (Test-Path $securityCheckerDir) { Sync-WorktreeFromSource -SourceDir $securityCheckerDir -DestDir $reviewerDir }
+            Write-Host "Running Reviewer (single-role mode)..."
+            Invoke-CodexRole -Role "reviewer" -RolePrompt $reviewerPrompt -RoleDir $reviewerDir -OutputFile $reviewerOut
+            Publish-HandoffComment -Role "reviewer" -OutputFile $reviewerOut
+            Publish-RoleBranch -RoleDir $reviewerDir
+        }
+        "doc-checker" {
+            if (Test-Path $reviewerDir) { Sync-WorktreeFromSource -SourceDir $reviewerDir -DestDir $docCheckerDir }
+            Write-Host "Running DocChecker (single-role mode)..."
+            Invoke-CodexRole -Role "doc-checker" -RolePrompt $docCheckerPrompt -RoleDir $docCheckerDir -OutputFile $docCheckerOut
+            Publish-HandoffComment -Role "doc-checker" -OutputFile $docCheckerOut
+            Sync-WorktreeFromSource -SourceDir $docCheckerDir -DestDir $implementerDir
+            Publish-PullRequest
+        }
+        default {
+            throw "Unknown role: '$SingleRole'. Valid roles: planner, implementer, tester, security-checker, reviewer, doc-checker"
+        }
+    }
+} else {
+
 Write-Host "Running Planner..."
 Invoke-CodexRole -Role "planner" -RolePrompt $plannerPrompt -RoleDir $plannerDir -OutputFile $plannerOut
 Publish-HandoffComment -Role "planner" -OutputFile $plannerOut
@@ -462,34 +558,9 @@ Invoke-CodexRole -Role "doc-checker" -RolePrompt $docCheckerPrompt -RoleDir $doc
 Publish-HandoffComment -Role "doc-checker" -OutputFile $docCheckerOut
 Sync-WorktreeFromSource -SourceDir $docCheckerDir -DestDir $implementerDir
 
-if ($PublishToGitHub -and $script:GhCommand) {
-    Write-Host "Creating pull request from implementer branch..."
-    $implBranch = & git -C $implementerDir rev-parse --abbrev-ref HEAD 2>$null
-    if ($implBranch -and $implBranch -ne "HEAD") {
-        $pending = & git -C $implementerDir status --porcelain 2>$null
-        if ($pending) {
-            & git -C $implementerDir add -A | Out-Null
-            & git -C $implementerDir commit -m "feat: automated fix for issue #$IssueNumber" | Out-Null
-        }
-        $pushOutput = & git -C $implementerDir push origin $implBranch 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Failed to push branch '$implBranch'. Skipping PR creation. Error: $pushOutput"
-        } else {
-            $prResult = & $script:GhCommand pr create `
-                --title "fix: automated resolution of issue #$IssueNumber" `
-                --body "Closes #$IssueNumber" `
-                --base main `
-                --head $implBranch 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "PR created: $prResult"
-                & $script:GhCommand pr merge --auto --squash 2>&1 | Out-Null
-                Write-Host "Auto-merge enabled."
-            } else {
-                Write-Warning "PR creation failed (PR may already exist). Output: $prResult"
-            }
-        }
-    }
-}
+Publish-PullRequest
+
+} # end else (full pipeline)
 
 Write-Host ""
 Write-Host "Completed multi-agent run for issue #$IssueNumber"
