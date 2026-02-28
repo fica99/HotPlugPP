@@ -144,8 +144,9 @@ function Test-AgentPass {
     )
     if (-not (Test-Path $OutputFile)) { return $false }
     $content = Get-Content -Raw $OutputFile
-    # Structured JSON handoff: AGENT_STATUS: {"status":"PASS",...}
-    if ($content -match 'AGENT_STATUS:\s*(\{[^\}]+\})') {
+    # Structured JSON handoff: AGENT_STATUS: {"status":"PASS",...} — match the whole line to avoid nested-brace issues
+    $statusLine = $content -split '\r?\n' | Where-Object { $_ -match '^\s*AGENT_STATUS:\s*(\{.+\})\s*$' } | Select-Object -Last 1
+    if ($statusLine -match '^\s*AGENT_STATUS:\s*(\{.+\})\s*$') {
         try {
             $json = $Matches[1] | ConvertFrom-Json
             return ($json.status -eq $PassStatus)
@@ -165,10 +166,13 @@ function Sync-WorktreeFromSource {
     $pending = & git -C $SourceDir status --porcelain 2>$null
     if ($pending) {
         & git -C $SourceDir add -A | Out-Null
-        & git -C $SourceDir commit -m "auto: agent checkpoint" | Out-Null
+        & git -C $SourceDir commit -m "auto: agent checkpoint" 2>&1 | Out-Null
     }
-    & git -C $DestDir fetch $SourceDir HEAD 2>$null | Out-Null
-    & git -C $DestDir merge FETCH_HEAD --no-edit 2>$null | Out-Null
+    & git -C $DestDir fetch $SourceDir HEAD 2>&1 | Out-Null
+    $mergeResult = & git -C $DestDir merge FETCH_HEAD --no-edit 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Worktree sync from '$SourceDir' to '$DestDir' encountered issues: $mergeResult"
+    }
 }
 
 $ghFallbacks = @(
@@ -462,15 +466,23 @@ if ($PublishToGitHub -and $script:GhCommand) {
             & git -C $implementerDir add -A | Out-Null
             & git -C $implementerDir commit -m "feat: automated fix for issue #$IssueNumber" | Out-Null
         }
-        & git -C $implementerDir push origin $implBranch 2>&1 | Out-Null
-        $prResult = & $script:GhCommand pr create `
-            --title "fix: automated resolution of issue #$IssueNumber" `
-            --body "Automated multi-agent pipeline fix for issue #$IssueNumber." `
-            --base main `
-            --head $implBranch 2>&1
-        Write-Host "PR: $prResult"
-        & $script:GhCommand pr merge --auto --squash 2>&1 | Out-Null
-        Write-Host "Auto-merge enabled."
+        $pushOutput = & git -C $implementerDir push origin $implBranch 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Failed to push branch '$implBranch'. Skipping PR creation. Error: $pushOutput"
+        } else {
+            $prResult = & $script:GhCommand pr create `
+                --title "fix: automated resolution of issue #$IssueNumber" `
+                --body "Automated multi-agent pipeline fix for issue #$IssueNumber." `
+                --base main `
+                --head $implBranch 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "PR created: $prResult"
+                & $script:GhCommand pr merge --auto --squash 2>&1 | Out-Null
+                Write-Host "Auto-merge enabled."
+            } else {
+                Write-Warning "PR creation failed (PR may already exist). Output: $prResult"
+            }
+        }
     }
 }
 

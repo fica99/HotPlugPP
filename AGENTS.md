@@ -22,7 +22,7 @@ This repository supports autonomous multi-agent collaboration with strict qualit
 4. SecurityChecker
 - Input: implementer diff, tester handoff.
 - Output: static analysis report (cppcheck, clang-tidy) with findings by severity.
-- File scope: read-only; does not modify source files. Reports findings for the Implementer to fix.
+- File scope: read-only for source code; writes only its handoff report file. Does not modify `include/`, `src/`, `tests/`, or `examples/`. Reports findings for the Implementer to fix.
 - Outputs `AGENT_STATUS: {"status":"PASS","findings":0}` when no critical/high findings remain.
 
 5. Reviewer
