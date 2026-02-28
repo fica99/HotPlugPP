@@ -84,8 +84,8 @@ jobs:
             2>/dev/null || true)
           if [ -n "$RUN_ID" ]; then
             echo "Restoring handoffs from run ${RUN_ID}..."
-            mkdir -p ../HotPlugPP-handoff
-            gh run download "${RUN_ID}" --name "${ARTIFACT_NAME}" --dir ../HotPlugPP-handoff/ || echo "Warning: download failed, continuing without previous handoffs."
+            mkdir -p "$RUNNER_TEMP/HotPlugPP-handoff"
+            gh run download "${RUN_ID}" --name "${ARTIFACT_NAME}" --dir "$RUNNER_TEMP/HotPlugPP-handoff/" || echo "Warning: download failed, continuing without previous handoffs."
           else
             echo "No previous handoff artifact found for issue ${ISSUE_NUMBER}."
           fi
@@ -111,7 +111,7 @@ jobs:
           $cmdArgs = @{
             IssueNumber = ([int]$env:ISSUE_NUMBER)
             BaseRoot    = "."
-            HandoffRoot = "../HotPlugPP-handoff"
+            HandoffRoot = "$env:RUNNER_TEMP/HotPlugPP-handoff"
             Provider    = $env:PROVIDER
           }
           $role = $env:SINGLE_ROLE
@@ -130,5 +130,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: handoff-issue-${{ github.event.issue.number || github.event.inputs.issue_number }}
-          path: ../HotPlugPP-handoff/
+          path: ${{ runner.temp }}/HotPlugPP-handoff/
           retention-days: 30
