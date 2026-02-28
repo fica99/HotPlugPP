@@ -6,7 +6,8 @@ param(
     [string]$HandoffRoot = "..\HotPlugPP-handoff",
     [string]$Model = "",
     [switch]$PublishToGitHub,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [int]$MaxIterations = 3
 )
 
 Set-StrictMode -Version Latest
@@ -97,7 +98,7 @@ function Invoke-CodexRole {
     Set-Content -Path $promptFile -Value $RolePrompt -Encoding UTF8
 
     if ($DryRun) {
-        Set-Content -Path $OutputFile -Value "[DRY RUN] $Role was not executed." -Encoding UTF8
+        Set-Content -Path $OutputFile -Value "[DRY RUN] $Role was not executed.`nSTATUS: PASS`nSTATUS: READY" -Encoding UTF8
         return
     }
 
@@ -134,6 +135,18 @@ function Publish-HandoffComment {
     & $script:GhCommand issue comment $IssueNumber --body-file $bodyFile | Out-Null
 }
 
+function Test-AgentPass {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$OutputFile,
+        [Parameter(Mandatory = $true)]
+        [string]$PassPattern
+    )
+    if (-not (Test-Path $OutputFile)) { return $false }
+    $content = Get-Content -Raw $OutputFile
+    return [bool]($content -match $PassPattern)
+}
+
 $ghFallbacks = @(
     "C:\Program Files\GitHub CLI\gh.exe",
     (Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI\gh.exe")
@@ -154,14 +167,12 @@ $plannerDir = Resolve-RolePath -Role "planner"
 $implementerDir = Resolve-RolePath -Role "implementer"
 $testerDir = Resolve-RolePath -Role "tester"
 $reviewerDir = Resolve-RolePath -Role "reviewer"
-$fixerDir = Resolve-RolePath -Role "fixer"
 $docCheckerDir = Resolve-RolePath -Role "doc-checker"
 
 $plannerOut = Join-Path $HandoffDir ("issue-$IssueNumber-planner.md")
 $implementerOut = Join-Path $HandoffDir ("issue-$IssueNumber-implementer.md")
 $testerOut = Join-Path $HandoffDir ("issue-$IssueNumber-tester.md")
 $reviewerOut = Join-Path $HandoffDir ("issue-$IssueNumber-reviewer.md")
-$fixerOut = Join-Path $HandoffDir ("issue-$IssueNumber-fixer.md")
 $docCheckerOut = Join-Path $HandoffDir ("issue-$IssueNumber-doc-checker.md")
 
 $plannerPrompt = @"
@@ -213,6 +224,7 @@ Task:
   - Files changed
   - Command results (pass/fail)
   - Residual risks
+- End with exactly one of these lines: STATUS: PASS  or  STATUS: FAIL
 "@
 
 $reviewerPrompt = @"
@@ -227,21 +239,40 @@ Read:
 Task:
 - Perform review with focus on bugs, regressions, API compatibility, and testing gaps.
 - Return findings ordered by severity.
-- End with final verdict: Ready / Not ready.
+- End with exactly one of these lines: STATUS: READY  or  STATUS: NOT READY
 "@
 
-$fixerPrompt = @"
+$implementerFixFromTesterPrompt = @"
 Issue #$IssueNumber.
 
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
-- Implementer handoff: $implementerOut
-- Tester handoff: $testerOut
-- Reviewer handoff: $reviewerOut
+- Previous implementer handoff: $implementerOut
+- Tester handoff (contains failures): $testerOut
 
 Task:
-- Address all findings raised by the reviewer, ordered by severity.
+- Fix all build, test, and format failures identified by the Tester.
+- Make code changes directly in this worktree.
+- At end, report:
+  - Root causes identified
+  - Files changed
+  - Validation commands run and results
+  - Remaining risks
+"@
+
+$implementerFixFromReviewerPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+- Previous implementer handoff: $implementerOut
+- Tester handoff: $testerOut
+- Reviewer handoff (contains findings): $reviewerOut
+
+Task:
+- Address all findings raised by the Reviewer, ordered by severity.
 - Make code changes directly in this worktree.
 - Re-run build/test/format checks after each fix to confirm they pass.
 - Skip findings already marked as resolved or not applicable.
@@ -262,7 +293,6 @@ Read:
 - Implementer handoff: $implementerOut
 - Tester handoff: $testerOut
 - Reviewer handoff: $reviewerOut
-- Fixer handoff: $fixerOut
 
 Task:
 - Inspect all code changes introduced for this issue (new APIs, changed behaviour, new features, removed items).
@@ -279,21 +309,55 @@ Write-Host "Running Planner..."
 Invoke-CodexRole -Role "planner" -RolePrompt $plannerPrompt -RoleDir $plannerDir -OutputFile $plannerOut
 Publish-HandoffComment -Role "planner" -OutputFile $plannerOut
 
-Write-Host "Running Implementer..."
-Invoke-CodexRole -Role "implementer" -RolePrompt $implementerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
-Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+# Implementer → Tester loop: retry Implementer if Tester fails
+$implTesterIter = 0
+do {
+    $implTesterIter++
+    if ($implTesterIter -eq 1) {
+        Write-Host "Running Implementer..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+    } else {
+        Write-Host "Running Implementer (retry $($implTesterIter - 1) - fixing tester failures)..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromTesterPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+    }
+    Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
 
-Write-Host "Running Tester..."
-Invoke-CodexRole -Role "tester" -RolePrompt $testerPrompt -RoleDir $testerDir -OutputFile $testerOut
-Publish-HandoffComment -Role "tester" -OutputFile $testerOut
+    Write-Host "Running Tester (iteration $implTesterIter)..."
+    Invoke-CodexRole -Role "tester" -RolePrompt $testerPrompt -RoleDir $testerDir -OutputFile $testerOut
+    Publish-HandoffComment -Role "tester" -OutputFile $testerOut
+} while (-not (Test-AgentPass -OutputFile $testerOut -PassPattern "STATUS:\s*PASS") -and $implTesterIter -lt $MaxIterations)
 
-Write-Host "Running Reviewer..."
-Invoke-CodexRole -Role "reviewer" -RolePrompt $reviewerPrompt -RoleDir $reviewerDir -OutputFile $reviewerOut
-Publish-HandoffComment -Role "reviewer" -OutputFile $reviewerOut
+if (-not (Test-AgentPass -OutputFile $testerOut -PassPattern "STATUS:\s*PASS")) {
+    Write-Warning "Tester did not achieve STATUS: PASS after $MaxIterations iteration(s). Continuing pipeline with last known state."
+}
 
-Write-Host "Running Fixer..."
-Invoke-CodexRole -Role "fixer" -RolePrompt $fixerPrompt -RoleDir $fixerDir -OutputFile $fixerOut
-Publish-HandoffComment -Role "fixer" -OutputFile $fixerOut
+# Reviewer loop: if Reviewer rejects, send back to Implementer → Tester → Reviewer
+$reviewIter = 0
+do {
+    $reviewIter++
+    if ($reviewIter -gt 1) {
+        Write-Host "Running Implementer (retry $($reviewIter - 1) - addressing reviewer findings)..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromReviewerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+
+        Write-Host "Running Tester (re-run after implementer retry $($reviewIter - 1))..."
+        Invoke-CodexRole -Role "tester" -RolePrompt $testerPrompt -RoleDir $testerDir -OutputFile $testerOut
+        Publish-HandoffComment -Role "tester" -OutputFile $testerOut
+
+        if (-not (Test-AgentPass -OutputFile $testerOut -PassPattern "STATUS:\s*PASS")) {
+            Write-Warning "Tester did not pass after implementer retry $($reviewIter - 1). Breaking reviewer loop."
+            break
+        }
+    }
+
+    Write-Host "Running Reviewer (iteration $reviewIter)..."
+    Invoke-CodexRole -Role "reviewer" -RolePrompt $reviewerPrompt -RoleDir $reviewerDir -OutputFile $reviewerOut
+    Publish-HandoffComment -Role "reviewer" -OutputFile $reviewerOut
+} while (-not (Test-AgentPass -OutputFile $reviewerOut -PassPattern "STATUS:\s*READY") -and $reviewIter -lt $MaxIterations)
+
+if (-not (Test-AgentPass -OutputFile $reviewerOut -PassPattern "STATUS:\s*READY")) {
+    Write-Warning "Reviewer did not achieve STATUS: READY after $MaxIterations iteration(s). Continuing to DocChecker with last known state."
+}
 
 Write-Host "Running DocChecker..."
 Invoke-CodexRole -Role "doc-checker" -RolePrompt $docCheckerPrompt -RoleDir $docCheckerDir -OutputFile $docCheckerOut
@@ -306,5 +370,4 @@ Write-Host "Planner:     $plannerOut"
 Write-Host "Implementer: $implementerOut"
 Write-Host "Tester:      $testerOut"
 Write-Host "Reviewer:    $reviewerOut"
-Write-Host "Fixer:       $fixerOut"
 Write-Host "DocChecker:  $docCheckerOut"

@@ -23,14 +23,9 @@ This repository supports autonomous multi-agent collaboration with strict qualit
 - Input: final diff and CI results.
 - Output: risk report, regression check, release notes fragment.
 - File scope: docs and small fixes only.
+- If blocking issues are found, control returns to the Implementer.
 
-5. Fixer
-- Input: reviewer findings.
-- Output: code changes addressing reviewer findings in `include/`, `src/`, `tests/`, `examples/`.
-- File scope: any file flagged by the reviewer.
-- Must re-run build/test/format checks after applying fixes.
-
-6. DocChecker
+5. DocChecker
 - Input: all prior handoffs and the full set of code changes.
 - Output: documentation gap report and any documentation updates applied.
 - File scope: `docs/`, `README.md`, `CONTRIBUTING.md`, inline code comments.
@@ -77,12 +72,11 @@ Use helper script:
 ### Coordination Rules
 
 - Planner defines scope and non-goals before coding.
-- Agent execution order:
-  1. Implementer — applies code changes
-  2. Tester — adds/fixes tests
-  3. Reviewer — provides findings
-  4. Fixer — addresses reviewer findings
-  5. DocChecker — verifies and updates documentation
+- The pipeline is cyclic with a configurable iteration limit (`MaxIterations`, default 3):
+  1. Planner — produces the implementation plan (runs once)
+  2. Implementer → Tester loop: Implementer applies changes, Tester validates. If Tester reports `STATUS: FAIL`, control returns to the Implementer for fixes; this repeats until `STATUS: PASS` or the iteration limit is reached. If the limit is exhausted, a warning is emitted and the pipeline continues with the last known state.
+  3. Reviewer → Implementer → Tester loop: Reviewer checks the result. If Reviewer reports `STATUS: NOT READY`, control returns to the Implementer (with reviewer findings), then Tester reruns, then Reviewer reruns; this repeats until `STATUS: READY` or the iteration limit is reached. If the Tester fails during a retry, the reviewer loop is broken immediately and a warning is emitted. If the iteration limit is exhausted, a warning is emitted and the pipeline continues to DocChecker.
+  4. DocChecker — verifies and updates documentation (runs once after the review loop passes).
 - If CI fails, ownership returns to the agent role that introduced the failing change.
 - If acceptance criteria are ambiguous, Planner must clarify before implementation.
 

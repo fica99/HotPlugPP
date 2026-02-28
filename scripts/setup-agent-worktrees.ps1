@@ -24,7 +24,6 @@ New-AgentWorktree -Role "planner"
 New-AgentWorktree -Role "implementer"
 New-AgentWorktree -Role "tester"
 New-AgentWorktree -Role "reviewer"
-New-AgentWorktree -Role "fixer"
 New-AgentWorktree -Role "doc-checker"
 
 Write-Host ""
