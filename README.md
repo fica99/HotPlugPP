@@ -87,6 +87,7 @@ See [API](https://github.com/fica99/HotPlugPP/wiki/API) for complete API documen
 - **[BUILD](https://github.com/fica99/HotPlugPP/wiki/BUILD)** - Detailed build instructions for all platforms
 - **[TUTORIAL](https://github.com/fica99/HotPlugPP/wiki/TUTORIAL)** - Step-by-step plugin creation guide
 - **[API](https://github.com/fica99/HotPlugPP/wiki/API)** - Complete API reference
+- **[Multi-Agent Workflow](docs/multi-agent-workflow.md)** - Autonomous multi-agent development process
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
 
 ## Examples

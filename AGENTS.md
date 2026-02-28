@@ -1,0 +1,76 @@
+## Multi-Agent Development Guide
+
+This repository supports autonomous multi-agent collaboration with strict quality gates.
+
+### Agent Roles
+
+1. Planner
+- Input: GitHub issue.
+- Output: implementation plan, scope boundaries, and acceptance criteria.
+- File scope: no direct code changes by default.
+
+2. Implementer
+- Input: plan and acceptance criteria.
+- Output: code changes in `include/`, `src/`, `examples/`.
+- File scope: avoid editing `tests/` unless explicitly required.
+
+3. Tester
+- Input: implementer diff and acceptance criteria.
+- Output: tests and validation changes in `tests/`, CI fixes for test reliability.
+- File scope: do not modify public API unless required for testability and documented.
+
+4. Reviewer
+- Input: final diff and CI results.
+- Output: risk report, regression check, release notes fragment.
+- File scope: docs and small fixes only.
+
+### Required Contract For Every Agent
+
+Each agent must return:
+- Summary of changes.
+- Files changed.
+- Validation commands run.
+- Result of each command.
+- Remaining risks or assumptions.
+
+### Definition of Done (DoD)
+
+A task is done only if all are true:
+- Builds successfully with CMake.
+- Formatting check passes.
+- Tests pass.
+- Acceptance criteria from issue are satisfied.
+- PR checklist is complete.
+
+### Required Local Validation Commands
+
+Run from repository root:
+
+```powershell
+cmake -S . -B build
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
+cmake -P scripts/check-format.cmake
+```
+
+### Branching and Isolation
+
+- One branch per task.
+- One worktree per active agent branch.
+- Never share one working directory between two active coding agents.
+
+Use helper script:
+- `scripts/setup-agent-worktrees.ps1`
+
+### Coordination Rules
+
+- Planner defines scope and non-goals before coding.
+- Implementer commits first, Tester follows with tests/fixes, Reviewer signs off last.
+- If CI fails, ownership returns to the agent role that introduced the failing change.
+- If acceptance criteria are ambiguous, Planner must clarify before implementation.
+
+### Safety Rules
+
+- No force-push to protected branches.
+- No merge without green CI.
+- No direct commits to `main`.
