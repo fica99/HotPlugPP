@@ -30,6 +30,12 @@ This repository supports autonomous multi-agent collaboration with strict qualit
 - File scope: any file flagged by the reviewer.
 - Must re-run build/test/format checks after applying fixes.
 
+6. DocChecker
+- Input: all prior handoffs and the full set of code changes.
+- Output: documentation gap report and any documentation updates applied.
+- File scope: `docs/`, `README.md`, `CONTRIBUTING.md`, inline code comments.
+- Must verify that every public API change, new feature, and behavioral change introduced in this issue is reflected in documentation.
+
 ### Required Contract For Every Agent
 
 Each agent must return:
@@ -71,7 +77,12 @@ Use helper script:
 ### Coordination Rules
 
 - Planner defines scope and non-goals before coding.
-- Implementer commits first, Tester follows with tests/fixes, Reviewer provides findings, Fixer addresses reviewer findings.
+- Agent execution order:
+  1. Implementer — applies code changes
+  2. Tester — adds/fixes tests
+  3. Reviewer — provides findings
+  4. Fixer — addresses reviewer findings
+  5. DocChecker — verifies and updates documentation
 - If CI fails, ownership returns to the agent role that introduced the failing change.
 - If acceptance criteria are ambiguous, Planner must clarify before implementation.
 

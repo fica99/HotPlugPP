@@ -155,12 +155,14 @@ $implementerDir = Resolve-RolePath -Role "implementer"
 $testerDir = Resolve-RolePath -Role "tester"
 $reviewerDir = Resolve-RolePath -Role "reviewer"
 $fixerDir = Resolve-RolePath -Role "fixer"
+$docCheckerDir = Resolve-RolePath -Role "doc-checker"
 
 $plannerOut = Join-Path $HandoffDir ("issue-$IssueNumber-planner.md")
 $implementerOut = Join-Path $HandoffDir ("issue-$IssueNumber-implementer.md")
 $testerOut = Join-Path $HandoffDir ("issue-$IssueNumber-tester.md")
 $reviewerOut = Join-Path $HandoffDir ("issue-$IssueNumber-reviewer.md")
 $fixerOut = Join-Path $HandoffDir ("issue-$IssueNumber-fixer.md")
+$docCheckerOut = Join-Path $HandoffDir ("issue-$IssueNumber-doc-checker.md")
 
 $plannerPrompt = @"
 Issue #$IssueNumber.
@@ -251,6 +253,28 @@ Task:
   - Remaining risks or assumptions
 "@
 
+$docCheckerPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+- Implementer handoff: $implementerOut
+- Tester handoff: $testerOut
+- Reviewer handoff: $reviewerOut
+- Fixer handoff: $fixerOut
+
+Task:
+- Inspect all code changes introduced for this issue (new APIs, changed behaviour, new features, removed items).
+- Verify that docs/, README.md, CONTRIBUTING.md, and relevant inline comments are up-to-date.
+- If documentation is missing or outdated, update it directly in this worktree.
+- At end, report:
+  - Documentation gaps found
+  - Files updated (or "none" if already complete)
+  - Validation commands run and results
+  - Remaining risks or assumptions
+"@
+
 Write-Host "Running Planner..."
 Invoke-CodexRole -Role "planner" -RolePrompt $plannerPrompt -RoleDir $plannerDir -OutputFile $plannerOut
 Publish-HandoffComment -Role "planner" -OutputFile $plannerOut
@@ -271,6 +295,10 @@ Write-Host "Running Fixer..."
 Invoke-CodexRole -Role "fixer" -RolePrompt $fixerPrompt -RoleDir $fixerDir -OutputFile $fixerOut
 Publish-HandoffComment -Role "fixer" -OutputFile $fixerOut
 
+Write-Host "Running DocChecker..."
+Invoke-CodexRole -Role "doc-checker" -RolePrompt $docCheckerPrompt -RoleDir $docCheckerDir -OutputFile $docCheckerOut
+Publish-HandoffComment -Role "doc-checker" -OutputFile $docCheckerOut
+
 Write-Host ""
 Write-Host "Completed multi-agent run for issue #$IssueNumber"
 Write-Host "Handoff directory: $HandoffDir"
@@ -279,3 +307,4 @@ Write-Host "Implementer: $implementerOut"
 Write-Host "Tester:      $testerOut"
 Write-Host "Reviewer:    $reviewerOut"
 Write-Host "Fixer:       $fixerOut"
+Write-Host "DocChecker:  $docCheckerOut"
