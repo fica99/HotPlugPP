@@ -154,11 +154,13 @@ $plannerDir = Resolve-RolePath -Role "planner"
 $implementerDir = Resolve-RolePath -Role "implementer"
 $testerDir = Resolve-RolePath -Role "tester"
 $reviewerDir = Resolve-RolePath -Role "reviewer"
+$fixerDir = Resolve-RolePath -Role "fixer"
 
 $plannerOut = Join-Path $HandoffDir ("issue-$IssueNumber-planner.md")
 $implementerOut = Join-Path $HandoffDir ("issue-$IssueNumber-implementer.md")
 $testerOut = Join-Path $HandoffDir ("issue-$IssueNumber-tester.md")
 $reviewerOut = Join-Path $HandoffDir ("issue-$IssueNumber-reviewer.md")
+$fixerOut = Join-Path $HandoffDir ("issue-$IssueNumber-fixer.md")
 
 $plannerPrompt = @"
 Issue #$IssueNumber.
@@ -226,6 +228,29 @@ Task:
 - End with final verdict: Ready / Not ready.
 "@
 
+$fixerPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+- Implementer handoff: $implementerOut
+- Tester handoff: $testerOut
+- Reviewer handoff: $reviewerOut
+
+Task:
+- Address all findings raised by the reviewer, ordered by severity.
+- Make code changes directly in this worktree.
+- Re-run build/test/format checks after each fix to confirm they pass.
+- Skip findings already marked as resolved or not applicable.
+- At end, report:
+  - Findings addressed (reference reviewer finding)
+  - Files changed
+  - Validation commands run and results (pass/fail for each)
+  - Remaining unresolved findings (if any) with justification
+  - Remaining risks or assumptions
+"@
+
 Write-Host "Running Planner..."
 Invoke-CodexRole -Role "planner" -RolePrompt $plannerPrompt -RoleDir $plannerDir -OutputFile $plannerOut
 Publish-HandoffComment -Role "planner" -OutputFile $plannerOut
@@ -242,6 +267,10 @@ Write-Host "Running Reviewer..."
 Invoke-CodexRole -Role "reviewer" -RolePrompt $reviewerPrompt -RoleDir $reviewerDir -OutputFile $reviewerOut
 Publish-HandoffComment -Role "reviewer" -OutputFile $reviewerOut
 
+Write-Host "Running Fixer..."
+Invoke-CodexRole -Role "fixer" -RolePrompt $fixerPrompt -RoleDir $fixerDir -OutputFile $fixerOut
+Publish-HandoffComment -Role "fixer" -OutputFile $fixerOut
+
 Write-Host ""
 Write-Host "Completed multi-agent run for issue #$IssueNumber"
 Write-Host "Handoff directory: $HandoffDir"
@@ -249,3 +278,4 @@ Write-Host "Planner:     $plannerOut"
 Write-Host "Implementer: $implementerOut"
 Write-Host "Tester:      $testerOut"
 Write-Host "Reviewer:    $reviewerOut"
+Write-Host "Fixer:       $fixerOut"

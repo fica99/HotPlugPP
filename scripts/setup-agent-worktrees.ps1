@@ -24,6 +24,7 @@ New-AgentWorktree -Role "planner"
 New-AgentWorktree -Role "implementer"
 New-AgentWorktree -Role "tester"
 New-AgentWorktree -Role "reviewer"
+New-AgentWorktree -Role "fixer"
 
 Write-Host ""
 Write-Host "Created agent worktrees under: $WorktreeRoot"

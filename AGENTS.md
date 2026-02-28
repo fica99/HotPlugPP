@@ -24,6 +24,12 @@ This repository supports autonomous multi-agent collaboration with strict qualit
 - Output: risk report, regression check, release notes fragment.
 - File scope: docs and small fixes only.
 
+5. Fixer
+- Input: reviewer findings.
+- Output: code changes addressing reviewer findings in `include/`, `src/`, `tests/`, `examples/`.
+- File scope: any file flagged by the reviewer.
+- Must re-run build/test/format checks after applying fixes.
+
 ### Required Contract For Every Agent
 
 Each agent must return:
@@ -65,7 +71,7 @@ Use helper script:
 ### Coordination Rules
 
 - Planner defines scope and non-goals before coding.
-- Implementer commits first, Tester follows with tests/fixes, Reviewer signs off last.
+- Implementer commits first, Tester follows with tests/fixes, Reviewer provides findings, Fixer addresses reviewer findings.
 - If CI fails, ownership returns to the agent role that introduced the failing change.
 - If acceptance criteria are ambiguous, Planner must clarify before implementation.
 
