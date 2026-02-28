@@ -56,9 +56,10 @@ function Resolve-RolePath {
     )
 
     $leaf = Split-Path -Leaf (Resolve-Path $BaseRoot)
-    $candidate = Join-Path (Split-Path -Parent (Resolve-Path $BaseRoot)) ($leaf + "-" + $Role)
+    $issueSuffix = if ($IssueNumber -gt 0) { "-issue-$IssueNumber" } else { "" }
+    $candidate = Join-Path (Split-Path -Parent (Resolve-Path $BaseRoot)) ($leaf + "-" + $Role + $issueSuffix)
     if (-not (Test-Path $candidate)) {
-        throw "Role worktree not found: $candidate. Run scripts/setup-agent-worktrees.ps1 first."
+        throw "Role worktree not found: $candidate. Run scripts/setup-agent-worktrees.ps1 -IssueNumber $IssueNumber first."
     }
     return (Resolve-Path $candidate).Path
 }
@@ -456,8 +457,10 @@ if (-not (Test-AgentPass -OutputFile $reviewerOut -PassStatus "READY")) {
 }
 
 Write-Host "Running DocChecker..."
+Sync-WorktreeFromSource -SourceDir $reviewerDir -DestDir $docCheckerDir
 Invoke-CodexRole -Role "doc-checker" -RolePrompt $docCheckerPrompt -RoleDir $docCheckerDir -OutputFile $docCheckerOut
 Publish-HandoffComment -Role "doc-checker" -OutputFile $docCheckerOut
+Sync-WorktreeFromSource -SourceDir $docCheckerDir -DestDir $implementerDir
 
 if ($PublishToGitHub -and $script:GhCommand) {
     Write-Host "Creating pull request from implementer branch..."
@@ -474,7 +477,7 @@ if ($PublishToGitHub -and $script:GhCommand) {
         } else {
             $prResult = & $script:GhCommand pr create `
                 --title "fix: automated resolution of issue #$IssueNumber" `
-                --body "Automated multi-agent pipeline fix for issue #$IssueNumber." `
+                --body "Closes #$IssueNumber" `
                 --base main `
                 --head $implBranch 2>&1
             if ($LASTEXITCODE -eq 0) {

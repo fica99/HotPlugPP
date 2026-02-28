@@ -43,7 +43,10 @@ jobs:
         run: npm install -g @openai/codex
 
       - name: Set up agent worktrees
-        run: pwsh ./scripts/setup-agent-worktrees.ps1
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
+        run: pwsh ./scripts/setup-agent-worktrees.ps1 -IssueNumber ([int]($env:ISSUE_NUMBER -as [int]))
+        shell: pwsh
 
       - name: Run multi-agent pipeline
         env:
