@@ -176,9 +176,11 @@ function Sync-WorktreeFromSource {
 }
 
 $ghFallbacks = @(
-    "C:\Program Files\GitHub CLI\gh.exe",
-    (Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI\gh.exe")
+    "C:\Program Files\GitHub CLI\gh.exe"
 )
+if ($env:LOCALAPPDATA) {
+    $ghFallbacks += Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI\gh.exe"
+}
 
 $script:CodexCommand = Require-Command -Name "codex"
 $script:GhCommand = Resolve-CommandPath -Name "gh" -FallbackPaths $ghFallbacks
