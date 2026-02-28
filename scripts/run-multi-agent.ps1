@@ -413,7 +413,7 @@ function Publish-PullRequest {
 
 function Publish-RoleBranch {
     param([Parameter(Mandatory = $true)][string]$RoleDir)
-    if (-not ($PublishToGitHub -and $script:GhCommand)) { return }
+    if (-not $PublishToGitHub) { return }
     $branch = & git -C $RoleDir rev-parse --abbrev-ref HEAD 2>$null
     if (-not $branch -or $branch -eq "HEAD") { return }
     $pending = & git -C $RoleDir status --porcelain 2>$null
