@@ -5,6 +5,7 @@ param(
     [string]$BaseRoot = ".",
     [string]$HandoffRoot = "..\HotPlugPP-handoff",
     [string]$Model = "",
+    [string]$Provider = "codex",
     [string]$SingleRole = "",
     [switch]$PublishToGitHub,
     [switch]$DryRun,
@@ -106,12 +107,41 @@ function Invoke-CodexRole {
         return
     }
 
-    $args = @("exec", "-C", $RoleDir, "--output-last-message", $OutputFile, "-")
-    if ($Model) {
-        $args += @("-m", $Model)
-    }
+    if ($Provider -eq "github-copilot") {
+        $promptContent = Get-Content -Raw $promptFile
+        # Default model for GitHub Copilot provider; use -Model to override (codex provider uses its own default)
+        $copilotModel = if ($Model) { $Model } else { "gpt-4o" }
+        $requestBody = @{
+            messages = @(@{ role = "user"; content = $promptContent })
+            model    = $copilotModel
+        } | ConvertTo-Json -Depth 5 -Compress
 
-    Get-Content -Raw $promptFile | & $script:CodexCommand @args
+        $tmpErr = [System.IO.Path]::GetTempFileName()
+        $responseJson = $requestBody | & $script:GhCommand api /copilot/chat/completions `
+            --method POST `
+            --input - `
+            --header "Content-Type: application/json" 2>$tmpErr
+        $errContent = Get-Content -Raw $tmpErr -ErrorAction SilentlyContinue
+        Remove-Item $tmpErr -ErrorAction SilentlyContinue
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "GitHub Copilot API call failed for role '$Role': $errContent"
+        }
+
+        $parsed = $responseJson | ConvertFrom-Json
+        if (-not $parsed.choices -or $parsed.choices.Count -eq 0 -or -not $parsed.choices[0].message) {
+            throw "Unexpected GitHub Copilot API response structure for role '$Role': $responseJson"
+        }
+        $responseContent = $parsed.choices[0].message.content
+        Set-Content -Path $OutputFile -Value $responseContent -Encoding UTF8
+    } else {
+        $codeArgs = @("exec", "-C", $RoleDir, "--output-last-message", $OutputFile, "-")
+        if ($Model) {
+            $codeArgs += @("-m", $Model)
+        }
+
+        Get-Content -Raw $promptFile | & $script:CodexCommand @codeArgs
+    }
 }
 
 function Publish-HandoffComment {
@@ -186,8 +216,11 @@ if ($env:LOCALAPPDATA) {
     $ghFallbacks += Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI\gh.exe"
 }
 
-$script:CodexCommand = Require-Command -Name "codex"
+$script:CodexCommand = if ($Provider -ne "github-copilot") { Require-Command -Name "codex" } else { $null }
 $script:GhCommand = Resolve-CommandPath -Name "gh" -FallbackPaths $ghFallbacks
+if ($Provider -eq "github-copilot" -and -not $script:GhCommand) {
+    throw "Required command not found: gh (needed for github-copilot provider)"
+}
 
 $rootPath = (Resolve-Path $BaseRoot).Path
 $HandoffDir = Join-Path $rootPath $HandoffRoot

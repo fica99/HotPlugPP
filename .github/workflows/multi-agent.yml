@@ -14,6 +14,14 @@ on:
         required: false
         type: string
         default: 'main'
+      provider:
+        description: 'AI provider to use for agent roles'
+        required: false
+        type: choice
+        default: 'codex'
+        options:
+          - codex
+          - github-copilot
       role:
         description: 'Single agent role to run (leave empty for full pipeline)'
         required: false
@@ -58,6 +66,7 @@ jobs:
           node-version: '20'
 
       - name: Install OpenAI Codex CLI
+        if: ${{ github.event.inputs.provider == 'codex' || github.event.inputs.provider == '' }}
         run: npm install -g @openai/codex
 
       - name: Restore handoff files for single-role run
@@ -97,11 +106,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number || github.event.inputs.issue_number }}
           SINGLE_ROLE: ${{ github.event.inputs.role }}
+          PROVIDER: ${{ github.event.inputs.provider || 'codex' }}
         run: |
           $cmdArgs = @(
             "-IssueNumber", ([int]$env:ISSUE_NUMBER),
             "-BaseRoot", ".",
-            "-HandoffRoot", "../HotPlugPP-handoff"
+            "-HandoffRoot", "../HotPlugPP-handoff",
+            "-Provider", $env:PROVIDER
           )
           $role = $env:SINGLE_ROLE
           # doc-checker is the final agent and creates the PR, so it always needs -PublishToGitHub
