@@ -108,19 +108,19 @@ jobs:
           SINGLE_ROLE: ${{ github.event.inputs.role }}
           PROVIDER: ${{ github.event.inputs.provider || 'codex' }}
         run: |
-          $cmdArgs = @(
-            "-IssueNumber", ([int]$env:ISSUE_NUMBER),
-            "-BaseRoot", ".",
-            "-HandoffRoot", "../HotPlugPP-handoff",
-            "-Provider", $env:PROVIDER
-          )
+          $cmdArgs = @{
+            IssueNumber = ([int]$env:ISSUE_NUMBER)
+            BaseRoot    = "."
+            HandoffRoot = "../HotPlugPP-handoff"
+            Provider    = $env:PROVIDER
+          }
           $role = $env:SINGLE_ROLE
           # doc-checker is the final agent and creates the PR, so it always needs -PublishToGitHub
           if (-not $role -or $role -eq "doc-checker") {
-            $cmdArgs += "-PublishToGitHub"
+            $cmdArgs["PublishToGitHub"] = $true
           }
           if ($role) {
-            $cmdArgs += @("-SingleRole", $role)
+            $cmdArgs["SingleRole"] = $role
           }
           & ./scripts/run-multi-agent.ps1 @cmdArgs
         shell: pwsh
