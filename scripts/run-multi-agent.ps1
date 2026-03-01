@@ -84,6 +84,47 @@ function Invoke-GitCapture {
     return Invoke-ProcessCapture -FilePath "git" -ArgumentList $ArgumentList
 }
 
+function Save-RoleArtifactsAndCommit {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Role,
+        [Parameter(Mandatory = $true)]
+        [string]$RoleDir,
+        [Parameter(Mandatory = $true)]
+        [string]$PromptFile,
+        [Parameter(Mandatory = $true)]
+        [string]$OutputFile
+    )
+
+    $artifactDir = Join-Path $RoleDir ".agent-artifacts/issue-$IssueNumber"
+    New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+
+    $promptArtifact = Join-Path $artifactDir "$Role-prompt.md"
+    $outputArtifact = Join-Path $artifactDir "$Role-output.md"
+
+    Copy-Item -Path $PromptFile -Destination $promptArtifact -Force
+    Copy-Item -Path $OutputFile -Destination $outputArtifact -Force
+
+    $addResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "add", "--", $promptArtifact, $outputArtifact)
+    if ($addResult.ExitCode -ne 0) {
+        throw "Failed to stage role artifacts for '$Role' in '$RoleDir': $(Get-ProcessFailureDetails -Result $addResult)"
+    }
+
+    $statusResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "status", "--porcelain", "--", $promptArtifact, $outputArtifact)
+    if ($statusResult.ExitCode -ne 0) {
+        throw "Failed to inspect role artifact status for '$Role' in '$RoleDir': $(Get-ProcessFailureDetails -Result $statusResult)"
+    }
+
+    if (-not $statusResult.StdOut) {
+        return
+    }
+
+    $commitResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "commit", "-m", "artifact: $Role handoff for issue #$IssueNumber", "--", $promptArtifact, $outputArtifact)
+    if ($commitResult.ExitCode -ne 0) {
+        throw "Failed to commit role artifacts for '$Role' in '$RoleDir': $(Get-ProcessFailureDetails -Result $commitResult)"
+    }
+}
+
 function Get-ProcessFailureDetails {
     param(
         [Parameter(Mandatory = $true)]
@@ -275,7 +316,15 @@ function Invoke-CodexRole {
             $codeArgs += @("-m", $Model)
         }
 
-        $codexOutput = Get-Content -Raw $promptFile | & $script:CodexCommand @codeArgs 2>&1
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            # codex/npm wrappers often write non-fatal startup lines to stderr on Windows.
+            # With global ErrorActionPreference=Stop this can surface as NativeCommandError.
+            $ErrorActionPreference = "Continue"
+            $codexOutput = Get-Content -Raw $promptFile | & $script:CodexCommand @codeArgs 2>&1
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
         $codexExitCode = $LASTEXITCODE
         $codexOutputText = (($codexOutput | ForEach-Object { $_.ToString() }) -join "`n").Trim()
 
@@ -303,6 +352,8 @@ function Invoke-CodexRole {
         }
         throw "Role '$Role' produced an empty handoff file: $OutputFile"
     }
+
+    Save-RoleArtifactsAndCommit -Role $Role -RoleDir $RoleDir -PromptFile $promptFile -OutputFile $OutputFile
 }
 
 function Publish-HandoffComment {
