@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << std::endl;
     std::cout << "Starting update loop (background watcher enabled)..." << std::endl;
-    std::cout << "Rebuild the plugin and the watcher will queue a hot-reload for the next check."
+    std::cout << "Rebuild the plugin and the watcher will queue a hot-reload for the next frame."
               << std::endl;
     std::cout << std::endl;
 
@@ -73,10 +73,8 @@ int main(int argc, char* argv[]) {
     while (true) {
         auto frameStart = std::chrono::high_resolution_clock::now();
 
-        // Apply watcher-triggered reloads every 60 frames (once per second at 60 FPS)
-        if (frameCount % 60 == 0) {
-            loader.checkAndReload();
-        }
+        // Apply watcher-triggered reloads from the host thread with minimal latency.
+        loader.checkAndReload();
 
         // Update the plugin
         plugin = loader.getPlugin();
