@@ -27,20 +27,27 @@ See [BUILD](https://github.com/fica99/HotPlugPP/wiki/BUILD) for detailed build i
 ## GUI Sample
 
 The repository includes an optional `gui_host_app` example under `examples/gui_host_app/` that
-provides a small non-terminal window for loading, unloading, and manually checking hot-reload
-status for a plugin.
+provides a non-terminal Dear ImGui host window for loading, unloading, and manually checking
+hot-reload status for a plugin.
 
 - Configure with `-DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON` to build the GUI sample.
-- The option defaults to `ON` on Windows and `OFF` on non-Windows platforms.
-- The current implementation is a self-contained Windows desktop sample and is skipped with a CMake
-  status message on other platforms.
-- `gui_host_app` defaults to loading `sample_plugin.dll` from the executable directory and falls
-  back to the parent `bin` directory when needed.
+- The option defaults to `OFF` so default builds do not depend on GUI libraries.
+- Set `-DHOTPLUGPP_IMGUI_DIR=/path/to/imgui` to a Dear ImGui checkout that contains `imgui.h` and
+  the `backends/` directory.
+- CMake also requires `glfw3` and `OpenGL`; if any GUI dependency is unavailable, the target is
+  skipped with a clear warning and the rest of the project still builds.
+- `gui_host_app` uses the existing `PluginLoader` API and shows plugin state, name, version,
+  description, and status messages.
+- The sample pre-fills the plugin path with `sample_plugin` from the executable directory, then
+  falls back to the parent output directory when needed.
 
-Example Windows build and run flow:
+Example configure, build, and run flow:
 
 ```powershell
 cmake -S . -B build -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON
+cmake -S . -B build `
+  -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON `
+  -DHOTPLUGPP_IMGUI_DIR=C:\dev\imgui
 cmake --build build --config Release --parallel
 .\build\bin\gui_host_app.exe
 ```
