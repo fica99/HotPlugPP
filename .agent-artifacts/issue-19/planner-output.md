@@ -1,53 +1,67 @@
-**Implementation Plan**
-1. CMake gating and graceful fallback.
-- Add `HOTPLUGPP_BUILD_GUI_EXAMPLE` option (default `OFF`) in [CMakeLists.txt](C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\CMakeLists.txt).
-- Wire the option into examples build flow in [examples/CMakeLists.txt](C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\examples\CMakeLists.txt).
-- If GUI deps are missing, print a clear CMake warning and skip only the GUI target (no hard failure, no impact on existing examples/tests).
-
-2. Add new GUI host sample.
-- Add new target folder and source: [examples/gui_host_app/main.cpp](C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\examples\gui_host_app\main.cpp) and [examples/gui_host_app/CMakeLists.txt](C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\examples\gui_host_app\CMakeLists.txt).
-- Implement Dear ImGui + minimal backend loop (GLFW/OpenGL) with actions: `Load`, `Unload`, `Check/Reload`.
-- Reuse existing `hotplugpp::PluginLoader` API only (no ABI/public API changes).
-- Display plugin state + name/version when loaded, plus last action/error text.
-
-3. Documentation update.
-- Add build/run notes for GUI sample in [README.md](C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\README.md) (or docs file if preferred), including option enablement and expected dependency behavior.
+**Implementation Plan (Issue #19)**
 
 **Scope**
-- New non-terminal interactive GUI host sample.
-- CMake integration under feature flag.
-- Short user-facing build/run documentation.
-- Preserve existing CLI sample behavior and current plugin ABI/API.
+1. Add/complete a non-terminal GUI host sample using Dear ImGui that demonstrates `load`, `unload`, and manual `check/reload`.
+2. Keep plugin interaction on existing `PluginLoader` API only (no ABI/API changes).
+3. Gate GUI sample behind `HOTPLUGPP_BUILD_GUI_EXAMPLE` and make dependency failures degrade predictably (clear CMake warning + skipped target).
+4. Integrate GUI sample into examples build flow and ensure `sample_plugin` is available at runtime.
+5. Document build/run steps in `README.md` (or docs), including required GUI dependencies.
 
 **Non-Goals**
-- Production-grade UI/UX polish.
-- Multiple rendering backends in v1.
-- Refactor of `PluginLoader` or core library architecture.
-- Mandatory GUI build in all CI jobs.
+1. Production-grade UI/UX styling or advanced GUI architecture.
+2. Multi-backend rendering support beyond the first minimal backend.
+3. Refactoring `PluginLoader` core behavior or public API.
+4. Expanding plugin feature scope beyond status/name/version visibility and basic control flow.
 
-**Planned File-Level Change List**
-- Modify [CMakeLists.txt](C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\CMakeLists.txt)
-- Modify [examples/CMakeLists.txt](C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\examples\CMakeLists.txt)
-- Add [examples/gui_host_app/CMakeLists.txt](C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\examples\gui_host_app\CMakeLists.txt)
-- Add [examples/gui_host_app/main.cpp](C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\examples\gui_host_app\main.cpp)
-- Modify [README.md](C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\README.md)
+**File-Level Change List**
+1. `CMakeLists.txt`
+   - Define/confirm `HOTPLUGPP_BUILD_GUI_EXAMPLE` option and examples integration behavior.
+2. `examples/CMakeLists.txt`
+   - Conditionally include GUI sample subdirectory.
+3. `examples/gui_host_app/CMakeLists.txt`
+   - Resolve ImGui/GLFW/OpenGL dependencies.
+   - Add graceful skip/warning path when deps are missing.
+   - Build `gui_host_app`, link `hotplugpp`, copy plugin artifact near executable.
+4. `examples/gui_host_app/main.cpp`
+   - Implement interactive GUI host: plugin path input, `Load`, `Unload`, `Check / Reload`, state + name/version/status rendering.
+5. `examples/gui_host_app.cpp` (if used as compatibility/contract shim)
+   - Keep source-contract compatibility if tests depend on this path.
+6. `README.md` (or `docs/...`)
+   - Add concise GUI sample build/run instructions and option/dependency notes.
+7. `tests/cmake/check_gui_example_*.cmake.in` and `tests/CMakeLists.txt` (Tester phase if needed)
+   - Ensure contract checks match final source/doc paths and expected labels/snippets.
+
+**Primary Risks**
+1. GUI dependency discovery varies across environments (`glfw` target names, OpenGL packages).
+2. Runtime plugin path/copy behavior differs by generator/config (`Debug/Release`, single vs multi-config).
+3. Contract tests can become brittle if UI labels/source locations drift.
+4. Platform coverage may be limited initially; define at least one validated platform baseline.
 
 **Acceptance Checks**
-- `HOTPLUGPP_BUILD_GUI_EXAMPLE=OFF`: project config/build/tests unchanged.
-- `HOTPLUGPP_BUILD_GUI_EXAMPLE=ON` with deps present: GUI sample target builds.
-- GUI runtime supports interactive `load`, `unload`, `check/reload`.
-- UI shows loaded state + plugin name/version.
-- Existing examples/tests remain green.
-- README/docs include clear build and launch instructions.
+1. Configure with GUI OFF: project builds normally, no GUI dependency requirement.
+2. Configure with GUI ON + valid deps: `gui_host_app` target is generated and builds.
+3. Configure with GUI ON + missing deps: CMake emits clear warning and skips GUI target without failing core build.
+4. Runtime smoke: GUI can load/unload/reload `sample_plugin`; UI shows loaded state and plugin name/version.
+5. Existing examples/tests remain passing (or explicitly gated where external deps are absent).
+6. README/docs contain reproducible GUI build/run instructions.
 
 **DoD Commands**
-- `cmake -S . -B build`
-- `cmake --build build --config Release --parallel`
-- `ctest --test-dir build -C Release --output-on-failure`
-- `cmake -P scripts/check-format.cmake`
-- Additional GUI verification build (when deps installed): `cmake -S . -B build-gui -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON` then `cmake --build build-gui --config Release --parallel`
+```powershell
+cmake -S . -B build
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
+cmake -P scripts/check-format.cmake
+```
+Additional GUI-on validation:
+```powershell
+cmake -S . -B build-gui -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON -DHOTPLUGPP_IMGUI_DIR=<path-to-imgui>
+cmake --build build-gui --config Release --parallel
+ctest --test-dir build-gui -C Release --output-on-failure
+```
 
 - Summary of changes: none (planning stage)
 - Files changed: none
 - Validation commands run: none
-- Remaining assumptions/risks: Dear ImGui dependency sourcing strategy is not yet fixed (vendored vs system); headless CI may not execute GUI runtime, so verification may stay build-level in CI and runtime-level locally; plugin path/extension handling must be OS-aware in docs and sample defaults.
+- Remaining assumptions/risks: ImGui checkout path is provided and valid; `glfw3`/OpenGL are discoverable in CI or local baseline; at least one target platform is designated as required GUI validation baseline.
+
+AGENT_STATUS: {"status":"READY","findings":0}
