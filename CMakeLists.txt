@@ -39,7 +39,7 @@ function(hotplugpp_can_fetch_efsw out_var)
     set(_probe_path "${CMAKE_BINARY_DIR}/CMakeFiles/hotplugpp-efsw-probe.txt")
     file(
         DOWNLOAD
-        "https://raw.githubusercontent.com/SpartanJ/efsw/refs/tags/1.4.0/CMakeLists.txt"
+        "https://raw.githubusercontent.com/SpartanJ/efsw/1.4.0/CMakeLists.txt"
         "${_probe_path}"
         STATUS _probe_status
         TIMEOUT 5
