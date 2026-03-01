@@ -3,6 +3,9 @@ project(HotPlugPP VERSION 1.0.0 LANGUAGES CXX)
 
 include(FetchContent)
 
+# Avoid MSBuild/ZERO_CHECK project-reference failures under parallel solution builds.
+set(CMAKE_SUPPRESS_REGENERATION ON)
+
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

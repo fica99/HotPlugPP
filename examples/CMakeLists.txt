@@ -2,6 +2,9 @@
 add_library(sample_plugin SHARED
     sample_plugin/sample_plugin.cpp
 )
+set_target_properties(sample_plugin PROPERTIES
+    EXCLUDE_FROM_ALL ON
+)
 
 target_include_directories(sample_plugin PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -33,6 +36,9 @@ endif()
 add_library(math_plugin SHARED
     math_plugin/math_plugin.cpp
 )
+set_target_properties(math_plugin PROPERTIES
+    EXCLUDE_FROM_ALL ON
+)
 
 target_include_directories(math_plugin PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -63,6 +69,9 @@ endif()
 # Host Application
 add_executable(host_app
     host_app.cpp
+)
+set_target_properties(host_app PROPERTIES
+    EXCLUDE_FROM_ALL ON
 )
 
 target_link_libraries(host_app PRIVATE

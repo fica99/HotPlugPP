@@ -16,12 +16,25 @@ if(NOT GTest_FOUND AND HOTPLUGPP_FETCH_GOOGLETEST)
 endif()
 
 if(NOT GTest_FOUND AND NOT TARGET GTest::gtest_main)
-    message(WARNING "GoogleTest not available; skipping test targets.")
-    return()
+    message(STATUS "GoogleTest not available; using the bundled test shim.")
+
+    add_library(hotplugpp_test_main STATIC
+        support/test_main.cpp
+    )
+    set_target_properties(hotplugpp_test_main PROPERTIES
+        EXCLUDE_FROM_ALL ON
+    )
+    target_include_directories(hotplugpp_test_main PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/support
+    )
+
+    add_library(GTest::gtest_main ALIAS hotplugpp_test_main)
+    set(HOTPLUGPP_USE_BUNDLED_GTEST_SHIM ON)
 endif()
 
-# Include Google Test
-include(GoogleTest)
+if(NOT HOTPLUGPP_USE_BUNDLED_GTEST_SHIM)
+    include(GoogleTest)
+endif()
 
 # Platform-specific shared library prefix and suffix
 if(WIN32)
@@ -38,6 +51,9 @@ endif()
 # Test plugin for integration tests
 add_library(test_plugin SHARED
     test_plugin/test_plugin.cpp
+)
+set_target_properties(test_plugin PROPERTIES
+    EXCLUDE_FROM_ALL ON
 )
 target_include_directories(test_plugin PRIVATE
     ${CMAKE_SOURCE_DIR}/include
@@ -62,6 +78,9 @@ set_target_properties(test_plugin PROPERTIES
 add_library(failing_plugin SHARED
     test_plugin/failing_plugin.cpp
 )
+set_target_properties(failing_plugin PROPERTIES
+    EXCLUDE_FROM_ALL ON
+)
 target_include_directories(failing_plugin PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
@@ -81,54 +100,34 @@ set_target_properties(failing_plugin PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${CMAKE_BINARY_DIR}/tests
 )
 
-# Version tests
-add_executable(version_tests
+# Consolidated test runner keeps MSBuild project-reference resolution stable in
+# parallel Visual Studio builds.
+add_executable(hotplugpp_tests
     version_tests.cpp
-)
-target_link_libraries(version_tests PRIVATE
-    GTest::gtest_main
-    hotplugpp
-)
-gtest_discover_tests(version_tests)
-
-# PluginLoader tests
-add_executable(plugin_loader_tests
     plugin_loader_tests.cpp
-)
-target_link_libraries(plugin_loader_tests PRIVATE
-    GTest::gtest_main
-    hotplugpp
-)
-target_compile_definitions(plugin_loader_tests PRIVATE
-    TEST_PLUGIN_DIR="${CMAKE_BINARY_DIR}/tests"
-    SHARED_LIB_PREFIX="${SHARED_LIB_PREFIX}"
-    SHARED_LIB_SUFFIX="${SHARED_LIB_SUFFIX}"
-)
-add_dependencies(plugin_loader_tests test_plugin failing_plugin)
-gtest_discover_tests(plugin_loader_tests)
-
-# IPlugin interface tests
-add_executable(iplugin_tests
     i_plugin_tests.cpp
-)
-target_link_libraries(iplugin_tests PRIVATE
-    GTest::gtest_main
-    hotplugpp
-)
-gtest_discover_tests(iplugin_tests)
-
-# Integration tests
-add_executable(integration_tests
     integration_tests.cpp
 )
-target_link_libraries(integration_tests PRIVATE
+set_target_properties(hotplugpp_tests PROPERTIES
+    EXCLUDE_FROM_ALL ON
+)
+target_link_libraries(hotplugpp_tests PRIVATE
     GTest::gtest_main
     hotplugpp
 )
-target_compile_definitions(integration_tests PRIVATE
+target_compile_definitions(hotplugpp_tests PRIVATE
     TEST_PLUGIN_DIR="${CMAKE_BINARY_DIR}/tests"
     SHARED_LIB_PREFIX="${SHARED_LIB_PREFIX}"
     SHARED_LIB_SUFFIX="${SHARED_LIB_SUFFIX}"
 )
-add_dependencies(integration_tests test_plugin)
-gtest_discover_tests(integration_tests)
+add_dependencies(hotplugpp_tests test_plugin failing_plugin)
+
+add_test(
+    NAME hotplugpp_tests
+    COMMAND ${CMAKE_COMMAND}
+        -DBINARY_DIR=${CMAKE_BINARY_DIR}
+        -DTEST_TARGET=hotplugpp_tests
+        -DTEST_EXECUTABLE=$<TARGET_FILE:hotplugpp_tests>
+        -DTEST_CONFIG=$<CONFIG>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/support/run_built_test.cmake
+)
