@@ -1054,7 +1054,6 @@ Sync-WorktreeFromSource -SourceDir $docCheckerDir -DestDir $implementerDir
 
 Publish-PullRequest
 
-# Reviewer loop: if Reviewer rejects, send back to Implementer → Tester → SecurityChecker → Reviewer
 } # end else (full pipeline)
 
 Write-Host ""
