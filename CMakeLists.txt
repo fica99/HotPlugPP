@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 project(HotPlugPP VERSION 1.0.0 LANGUAGES CXX)
 
 include(FetchContent)
+set(CMAKE_SUPPRESS_REGENERATION ON)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -54,12 +55,12 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Add subdirectories
 add_subdirectory(src)
-add_subdirectory(examples)
+add_subdirectory(examples EXCLUDE_FROM_ALL)
 
 # Testing
 option(HOTPLUGPP_BUILD_TESTS "Build tests" ON)
 
 if(HOTPLUGPP_BUILD_TESTS)
     enable_testing()
-    add_subdirectory(tests)
+    add_subdirectory(tests EXCLUDE_FROM_ALL)
 endif()

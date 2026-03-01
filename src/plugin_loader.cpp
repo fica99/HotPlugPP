@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <condition_variable>
 #include <exception>
 #include <filesystem>
 #include <iostream>
@@ -55,7 +56,9 @@ struct WatcherState {
     std::atomic<bool> reloadPending{false};
     bool watchActive = false;
     std::thread watcherThread;
-    std::mutex mutex;
+    mutable std::mutex mutex;
+    std::condition_variable callbackIdle;
+    std::size_t callbacksInFlight = 0;
     Clock::time_point lastEventTime{};
     std::string watchedPath;
     std::string watchedDirectory;
@@ -69,6 +72,7 @@ struct WatcherState {
 
     bool matchesPath(const std::string& filename,
                      const std::string& oldFilename = std::string()) const {
+        std::lock_guard<std::mutex> lock(mutex);
         if (watchedFilename.empty()) {
             return false;
         }
@@ -79,10 +83,36 @@ struct WatcherState {
 
         return matches(filename) || matches(oldFilename);
     }
+
+    void setWatchedTarget(std::string path, std::string directory, std::string filename) {
+        std::lock_guard<std::mutex> lock(mutex);
+        watchedPath = std::move(path);
+        watchedDirectory = std::move(directory);
+        watchedFilename = std::move(filename);
+    }
 };
 
 std::mutex g_watcherStatesMutex;
 std::unordered_map<const PluginLoader*, std::unique_ptr<WatcherState>> g_watcherStates;
+
+#if defined(HOTPLUGPP_HAS_EFSW)
+class CallbackActivityGuard {
+  public:
+    explicit CallbackActivityGuard(WatcherState& state) : m_state(state) {
+        std::lock_guard<std::mutex> lock(m_state.mutex);
+        ++m_state.callbacksInFlight;
+    }
+
+    ~CallbackActivityGuard() {
+        std::lock_guard<std::mutex> lock(m_state.mutex);
+        --m_state.callbacksInFlight;
+        m_state.callbackIdle.notify_all();
+    }
+
+  private:
+    WatcherState& m_state;
+};
+#endif
 
 std::chrono::system_clock::time_point getFileModificationTimeForWatch(const std::string& path) {
     struct stat statbuf;
@@ -126,6 +156,11 @@ class ReloadListener final : public efsw::FileWatchListener {
     void handleFileAction(efsw::WatchID, const std::string&, const std::string& filename,
                           efsw::Action action, std::string oldFilename) override {
         (void)action;
+        CallbackActivityGuard callbackGuard(m_state);
+
+        if (m_state.stopRequested.load(std::memory_order_acquire)) {
+            return;
+        }
 
         if (!m_state.matchesPath(filename, oldFilename)) {
             return;
@@ -155,18 +190,20 @@ void stopWatching(WatcherState& state) {
     state.reloadPending.store(false, std::memory_order_release);
     state.watchActive = false;
 
+    {
+        std::unique_lock<std::mutex> lock(state.mutex);
+        state.callbackIdle.wait(lock, [&state]() { return state.callbacksInFlight == 0; });
+        state.lastEventTime = Clock::time_point{};
+        state.watchedPath.clear();
+        state.watchedDirectory.clear();
+        state.watchedFilename.clear();
+    }
+
 #if defined(HOTPLUGPP_HAS_EFSW)
     state.listener.reset();
     state.fileWatcher.reset();
     state.watchId = static_cast<efsw::WatchID>(-1);
 #endif
-
-    state.watchedPath.clear();
-    state.watchedDirectory.clear();
-    state.watchedFilename.clear();
-
-    std::lock_guard<std::mutex> lock(state.mutex);
-    state.lastEventTime = Clock::time_point{};
 }
 
 bool startWatching(const PluginLoader* loader, const std::string& path) {
@@ -195,16 +232,18 @@ bool startWatching(const PluginLoader* loader, const std::string& path) {
         return false;
     }
 
-    state.watchedPath = absolutePluginPath.lexically_normal().string();
-    state.watchedDirectory = pluginDirectory.lexically_normal().string();
-    state.watchedFilename = absolutePluginPath.filename().string();
+    const std::string watchedPath = absolutePluginPath.lexically_normal().string();
+    const std::string watchedDirectory = pluginDirectory.lexically_normal().string();
+    const std::string watchedFilename = absolutePluginPath.filename().string();
+
+    state.setWatchedTarget(watchedPath, watchedDirectory, watchedFilename);
+    state.stopRequested.store(false, std::memory_order_release);
 
 #if defined(HOTPLUGPP_HAS_EFSW)
     try {
         state.listener = std::make_unique<ReloadListener>(state);
         state.fileWatcher = std::make_unique<efsw::FileWatcher>();
-        state.watchId = state.fileWatcher->addWatch(state.watchedDirectory, state.listener.get(),
-                                                    false);
+        state.watchId = state.fileWatcher->addWatch(watchedDirectory, state.listener.get(), false);
 
         if (state.watchId >= 0) {
             state.fileWatcher->watch();
@@ -224,9 +263,7 @@ bool startWatching(const PluginLoader* loader, const std::string& path) {
               << "; falling back to the built-in polling watcher." << std::endl;
 #endif
 
-    state.stopRequested.store(false, std::memory_order_release);
-    state.watcherThread = std::thread([&state]() {
-        const std::string watchedPath = state.watchedPath;
+    state.watcherThread = std::thread([&state, watchedPath]() {
         auto lastObserved = getFileModificationTimeForWatch(watchedPath);
 
         while (!state.stopRequested.load(std::memory_order_acquire)) {
