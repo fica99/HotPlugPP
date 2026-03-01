@@ -34,7 +34,6 @@ HotPlugPP now starts a background file watcher automatically after `loadPlugin()
 
 - `HOTPLUGPP_USE_EFSW=ON` enables `efsw` integration when an installed package or fetched source is available.
 - `HOTPLUGPP_FETCH_EFSW=ON` allows CMake to fetch `efsw` with `FetchContent` when it is not already installed.
-- `HOTPLUGPP_USE_BUNDLED_EFSW_STUB=ON` keeps the `efsw`-compatible shim enabled when the real dependency is unavailable.
 - If `efsw` is unavailable or the fetch probe cannot reach the source, HotPlugPP logs a status message and keeps hot-reload enabled by using the built-in polling watcher instead.
 - If the plugin path is invalid or the containing directory cannot be watched, the plugin still loads; only automatic watching is disabled for that load.
 

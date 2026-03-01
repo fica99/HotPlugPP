@@ -29,8 +29,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(HOTPLUGPP_USE_EFSW "Use efsw when it is available" ON)
 option(HOTPLUGPP_FETCH_EFSW "Fetch efsw with FetchContent when it is not already available" ON)
-option(HOTPLUGPP_USE_BUNDLED_EFSW_STUB
-       "Use the bundled efsw-compatible shim when the real dependency is unavailable" ON)
 
 set(HOTPLUGPP_HAS_EFSW OFF)
 set(HOTPLUGPP_EFSW_TARGET "")
@@ -83,14 +81,6 @@ if(HOTPLUGPP_USE_EFSW)
         else()
             set(HOTPLUGPP_EFSW_TARGET efsw-static)
         endif()
-    elseif(HOTPLUGPP_USE_BUNDLED_EFSW_STUB)
-        add_library(hotplugpp_efsw_stub INTERFACE)
-        target_include_directories(hotplugpp_efsw_stub INTERFACE
-            ${CMAKE_SOURCE_DIR}/src/compat
-        )
-        set(HOTPLUGPP_HAS_EFSW ON)
-        set(HOTPLUGPP_EFSW_TARGET hotplugpp_efsw_stub)
-        message(STATUS "efsw not available; using the bundled efsw-compatible shim for offline validation.")
     else()
         message(STATUS "efsw not available; using the built-in polling watcher fallback.")
     endif()
