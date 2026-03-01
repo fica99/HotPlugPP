@@ -84,6 +84,51 @@ function Invoke-GitCapture {
     return Invoke-ProcessCapture -FilePath "git" -ArgumentList $ArgumentList
 }
 
+function Get-ProcessFailureDetails {
+    param(
+        [Parameter(Mandatory = $true)]
+        $Result
+    )
+
+    if ($Result.StdErr) {
+        if ($Result.StdOut) {
+            return ($Result.StdErr + "`n" + $Result.StdOut).Trim()
+        }
+
+        return $Result.StdErr.Trim()
+    }
+
+    if ($Result.StdOut) {
+        return $Result.StdOut.Trim()
+    }
+
+    return "(exit code $($Result.ExitCode), no output from process)"
+}
+
+function Get-WorktreeSyncFailureDetails {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$DestDir,
+        [Parameter(Mandatory = $true)]
+        $Result
+    )
+
+    $parts = New-Object System.Collections.Generic.List[string]
+    $parts.Add((Get-ProcessFailureDetails -Result $Result))
+
+    $conflictResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "diff", "--name-only", "--diff-filter=U")
+    if ($conflictResult.ExitCode -eq 0 -and $conflictResult.StdOut) {
+        $parts.Add("Conflicted files:`n$($conflictResult.StdOut.Trim())")
+    }
+
+    $statusResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "status", "--short", "--branch")
+    if ($statusResult.ExitCode -eq 0 -and $statusResult.StdOut) {
+        $parts.Add("Destination status:`n$($statusResult.StdOut.Trim())")
+    }
+
+    return (($parts | Where-Object { $_ -and $_.Trim() }) -join "`n`n").Trim()
+}
+
 function Resolve-CommandPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -329,12 +374,12 @@ function Sync-WorktreeFromSource {
 
     $fetchResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "fetch", "--quiet", $SourceDir, "HEAD")
     if ($fetchResult.ExitCode -ne 0) {
-        throw "Worktree sync fetch from '$SourceDir' to '$DestDir' failed. $($fetchResult.StdErr)"
+        throw "Worktree sync fetch from '$SourceDir' to '$DestDir' failed. $(Get-ProcessFailureDetails -Result $fetchResult)"
     }
 
     $mergeResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "merge", "FETCH_HEAD", "--no-edit")
     if ($mergeResult.ExitCode -ne 0) {
-        throw "Worktree sync from '$SourceDir' to '$DestDir' encountered issues: $($mergeResult.StdErr)"
+        throw "Worktree sync from '$SourceDir' to '$DestDir' encountered issues: $(Get-WorktreeSyncFailureDetails -DestDir $DestDir -Result $mergeResult)"
     }
 }
 
@@ -370,7 +415,7 @@ function Ensure-GitSafeDirectory {
 
     $addSafeResult = Invoke-GitCapture -ArgumentList @("config", "--global", "--add", "safe.directory", $resolvedPath)
     if ($addSafeResult.ExitCode -ne 0) {
-        throw "Failed to add git safe.directory for '$resolvedPath': $($addSafeResult.StdErr)"
+        throw "Failed to add git safe.directory for '$resolvedPath': $(Get-ProcessFailureDetails -Result $addSafeResult)"
     }
 }
 
@@ -596,32 +641,32 @@ function Publish-PullRequest {
     Write-Host "Creating pull request from implementer branch..."
     $branchResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "rev-parse", "--abbrev-ref", "HEAD")
     if ($branchResult.ExitCode -ne 0) {
-        throw "Failed to determine implementer branch: $($branchResult.StdErr)"
+        throw "Failed to determine implementer branch: $(Get-ProcessFailureDetails -Result $branchResult)"
     }
 
     $implBranch = $branchResult.StdOut
     if ($implBranch -and $implBranch -ne "HEAD") {
         $statusResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "status", "--porcelain")
         if ($statusResult.ExitCode -ne 0) {
-            throw "Failed to inspect implementer worktree status: $($statusResult.StdErr)"
+            throw "Failed to inspect implementer worktree status: $(Get-ProcessFailureDetails -Result $statusResult)"
         }
 
         $pending = $statusResult.StdOut
         if ($pending) {
             $addResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "add", "-A")
             if ($addResult.ExitCode -ne 0) {
-                throw "Failed to stage implementer changes: $($addResult.StdErr)"
+                throw "Failed to stage implementer changes: $(Get-ProcessFailureDetails -Result $addResult)"
             }
 
             $commitResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "commit", "-m", "feat: automated fix for issue #$IssueNumber")
             if ($commitResult.ExitCode -ne 0) {
-                throw "Failed to create implementer publish commit in '$implementerDir': $($commitResult.StdErr)"
+                throw "Failed to create implementer publish commit in '$implementerDir': $(Get-ProcessFailureDetails -Result $commitResult)"
             }
         }
 
         $pushResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "push", "origin", $implBranch)
         if ($pushResult.ExitCode -ne 0) {
-            Write-Warning "Failed to push branch '$implBranch'. Skipping PR creation. Error: $($pushResult.StdErr)"
+            Write-Warning "Failed to push branch '$implBranch'. Skipping PR creation. Error: $(Get-ProcessFailureDetails -Result $pushResult)"
         } else {
             $prResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @(
                 "pr", "create",
@@ -634,11 +679,11 @@ function Publish-PullRequest {
                 Write-Host "PR created: $($prResult.StdOut)"
                 $mergeResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @("pr", "merge", "--auto", "--squash")
                 if ($mergeResult.ExitCode -ne 0) {
-                    throw "PR was created but auto-merge could not be enabled: $($mergeResult.StdErr)"
+                    throw "PR was created but auto-merge could not be enabled: $(Get-ProcessFailureDetails -Result $mergeResult)"
                 }
                 Write-Host "Auto-merge enabled."
             } else {
-                Write-Warning "PR creation failed (PR may already exist). Output: $($prResult.StdErr)"
+                Write-Warning "PR creation failed (PR may already exist). Output: $(Get-ProcessFailureDetails -Result $prResult)"
             }
         }
     }
@@ -649,32 +694,32 @@ function Publish-RoleBranch {
     if (-not $PublishToGitHub) { return }
     $branchResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "rev-parse", "--abbrev-ref", "HEAD")
     if ($branchResult.ExitCode -ne 0) {
-        throw "Failed to determine role branch in '$RoleDir': $($branchResult.StdErr)"
+        throw "Failed to determine role branch in '$RoleDir': $(Get-ProcessFailureDetails -Result $branchResult)"
     }
 
     $branch = $branchResult.StdOut
     if (-not $branch -or $branch -eq "HEAD") { return }
     $statusResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "status", "--porcelain")
     if ($statusResult.ExitCode -ne 0) {
-        throw "Failed to inspect role worktree status in '$RoleDir': $($statusResult.StdErr)"
+        throw "Failed to inspect role worktree status in '$RoleDir': $(Get-ProcessFailureDetails -Result $statusResult)"
     }
 
     $pending = $statusResult.StdOut
     if ($pending) {
         $addResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "add", "-A")
         if ($addResult.ExitCode -ne 0) {
-            throw "Failed to stage role changes in '$RoleDir': $($addResult.StdErr)"
+            throw "Failed to stage role changes in '$RoleDir': $(Get-ProcessFailureDetails -Result $addResult)"
         }
 
         $commitResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "commit", "-m", "auto: agent checkpoint")
         if ($commitResult.ExitCode -ne 0) {
-            throw "Failed to create auto-checkpoint commit in '$RoleDir': $($commitResult.StdErr)"
+            throw "Failed to create auto-checkpoint commit in '$RoleDir': $(Get-ProcessFailureDetails -Result $commitResult)"
         }
     }
 
     $pushResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "push", "origin", $branch)
     if ($pushResult.ExitCode -ne 0) {
-        throw "Failed to push role branch '$branch' from '$RoleDir': $($pushResult.StdErr)"
+        throw "Failed to push role branch '$branch' from '$RoleDir': $(Get-ProcessFailureDetails -Result $pushResult)"
     }
 }
 
