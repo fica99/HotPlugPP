@@ -28,12 +28,37 @@ endif()
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(HOTPLUGPP_USE_EFSW "Use efsw when it is available" ON)
-option(HOTPLUGPP_FETCH_EFSW "Fetch efsw with FetchContent" OFF)
+option(HOTPLUGPP_FETCH_EFSW "Fetch efsw with FetchContent when it is not already available" ON)
 
 set(HOTPLUGPP_HAS_EFSW OFF)
 
+function(hotplugpp_can_fetch_efsw out_var)
+    set(_probe_path "${CMAKE_BINARY_DIR}/CMakeFiles/hotplugpp-efsw-probe.txt")
+    file(
+        DOWNLOAD
+        "https://raw.githubusercontent.com/SpartanJ/efsw/refs/tags/1.4.0/CMakeLists.txt"
+        "${_probe_path}"
+        STATUS _probe_status
+        TIMEOUT 5
+        LOG _probe_log
+    )
+    list(GET _probe_status 0 _probe_code)
+    if(_probe_code EQUAL 0)
+        set(${out_var} ON PARENT_SCOPE)
+    else()
+        set(${out_var} OFF PARENT_SCOPE)
+    endif()
+    file(REMOVE "${_probe_path}")
+endfunction()
+
 if(HOTPLUGPP_USE_EFSW)
-    if(HOTPLUGPP_FETCH_EFSW)
+    find_package(efsw CONFIG QUIET)
+
+    if(NOT TARGET efsw AND NOT TARGET efsw-static AND HOTPLUGPP_FETCH_EFSW)
+        hotplugpp_can_fetch_efsw(HOTPLUGPP_CAN_FETCH_EFSW)
+    endif()
+
+    if(NOT TARGET efsw AND NOT TARGET efsw-static AND HOTPLUGPP_FETCH_EFSW AND HOTPLUGPP_CAN_FETCH_EFSW)
         set(EFSW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
         set(EFSW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         set(EFSW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -44,6 +69,8 @@ if(HOTPLUGPP_USE_EFSW)
             GIT_SHALLOW TRUE
         )
         FetchContent_MakeAvailable(efsw)
+    elseif(NOT TARGET efsw AND NOT TARGET efsw-static AND HOTPLUGPP_FETCH_EFSW)
+        message(STATUS "efsw fetch skipped because the source is unreachable; using the built-in polling watcher fallback.")
     endif()
 
     if(TARGET efsw OR TARGET efsw-static)
