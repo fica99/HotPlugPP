@@ -30,6 +30,9 @@ set(HOTPLUGPP_HAS_EFSW OFF)
 
 if(HOTPLUGPP_USE_EFSW)
     if(HOTPLUGPP_FETCH_EFSW)
+        set(EFSW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(EFSW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(EFSW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
         FetchContent_Declare(
             efsw
             GIT_REPOSITORY https://github.com/SpartanJ/efsw.git

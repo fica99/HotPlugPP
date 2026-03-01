@@ -1,6 +1,9 @@
 #include "hotplugpp/plugin_loader.hpp"
 
+#include <algorithm>
 #include <atomic>
+#include <cctype>
+#include <exception>
 #include <filesystem>
 #include <iostream>
 #include <mutex>
@@ -12,6 +15,10 @@
 #include <windows.h>
 #else
 #include <dlfcn.h>
+#endif
+
+#if defined(HOTPLUGPP_HAS_EFSW)
+#include <efsw/efsw.hpp>
 #endif
 
 #include <sys/stat.h>
@@ -26,12 +33,52 @@ namespace fs = std::filesystem;
 constexpr auto kWatchPollInterval = std::chrono::milliseconds(100);
 constexpr auto kReloadDebounceInterval = std::chrono::milliseconds(250);
 
+std::string toLowerCopy(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return value;
+}
+
+bool isDynamicLibraryPath(const fs::path& path) {
+    const std::string extension = toLowerCopy(path.extension().string());
+    return extension == ".dll" || extension == ".so" || extension == ".dylib";
+}
+
+struct WatcherState;
+
+#if defined(HOTPLUGPP_HAS_EFSW)
+class ReloadListener;
+#endif
+
 struct WatcherState {
     std::atomic<bool> stopRequested{false};
     std::atomic<bool> reloadPending{false};
+    bool watchActive = false;
     std::thread watcherThread;
     std::mutex mutex;
     Clock::time_point lastEventTime{};
+    std::string watchedPath;
+    std::string watchedDirectory;
+    std::string watchedFilename;
+
+#if defined(HOTPLUGPP_HAS_EFSW)
+    std::unique_ptr<efsw::FileWatcher> fileWatcher;
+    std::unique_ptr<ReloadListener> listener;
+    efsw::WatchID watchId = static_cast<efsw::WatchID>(-1);
+#endif
+
+    bool matchesPath(const std::string& filename,
+                     const std::string& oldFilename = std::string()) const {
+        if (watchedFilename.empty()) {
+            return false;
+        }
+
+        const auto matches = [this](const std::string& candidate) {
+            return !candidate.empty() && fs::path(candidate).filename().string() == watchedFilename;
+        };
+
+        return matches(filename) || matches(oldFilename);
+    }
 };
 
 std::mutex g_watcherStatesMutex;
@@ -71,13 +118,53 @@ void notifyPluginChange(WatcherState& state) {
     state.reloadPending.store(true, std::memory_order_release);
 }
 
+#if defined(HOTPLUGPP_HAS_EFSW)
+class ReloadListener final : public efsw::FileWatchListener {
+  public:
+    explicit ReloadListener(WatcherState& state) : m_state(state) {}
+
+    void handleFileAction(efsw::WatchID, const std::string&, const std::string& filename,
+                          efsw::Action action, std::string oldFilename) override {
+        (void)action;
+
+        if (!m_state.matchesPath(filename, oldFilename)) {
+            return;
+        }
+
+        notifyPluginChange(m_state);
+    }
+
+  private:
+    WatcherState& m_state;
+};
+#endif
+
 void stopWatching(WatcherState& state) {
     state.stopRequested.store(true, std::memory_order_release);
+
+#if defined(HOTPLUGPP_HAS_EFSW)
+    if (state.fileWatcher && state.watchId >= 0) {
+        state.fileWatcher->removeWatch(state.watchId);
+    }
+#endif
+
     if (state.watcherThread.joinable()) {
         state.watcherThread.join();
     }
 
     state.reloadPending.store(false, std::memory_order_release);
+    state.watchActive = false;
+
+#if defined(HOTPLUGPP_HAS_EFSW)
+    state.listener.reset();
+    state.fileWatcher.reset();
+    state.watchId = static_cast<efsw::WatchID>(-1);
+#endif
+
+    state.watchedPath.clear();
+    state.watchedDirectory.clear();
+    state.watchedFilename.clear();
+
     std::lock_guard<std::mutex> lock(state.mutex);
     state.lastEventTime = Clock::time_point{};
 }
@@ -87,32 +174,74 @@ bool startWatching(const PluginLoader* loader, const std::string& path) {
     stopWatching(state);
 
     fs::path pluginPath(path);
+    if (pluginPath.empty() || !isDynamicLibraryPath(pluginPath)) {
+        std::cerr << "Hot-reload watcher only supports plugin libraries: " << path << std::endl;
+        return false;
+    }
+
     std::error_code pathError;
-    fs::path pluginDirectory = pluginPath.has_parent_path() ? pluginPath.parent_path()
-                                                            : fs::current_path(pathError);
+    fs::path absolutePluginPath = fs::absolute(pluginPath, pathError);
+    if (pathError) {
+        absolutePluginPath = pluginPath.lexically_normal();
+        pathError.clear();
+    }
+
+    fs::path pluginDirectory = absolutePluginPath.has_parent_path()
+                                   ? absolutePluginPath.parent_path()
+                                   : fs::current_path(pathError);
     const bool directoryExists = !pluginDirectory.empty() && fs::exists(pluginDirectory, pathError);
     if (pathError || !directoryExists) {
         std::cerr << "Hot-reload watcher could not monitor path: " << path << std::endl;
         return false;
     }
 
+    state.watchedPath = absolutePluginPath.lexically_normal().string();
+    state.watchedDirectory = pluginDirectory.lexically_normal().string();
+    state.watchedFilename = absolutePluginPath.filename().string();
+
+#if defined(HOTPLUGPP_HAS_EFSW)
+    try {
+        state.listener = std::make_unique<ReloadListener>(state);
+        state.fileWatcher = std::make_unique<efsw::FileWatcher>();
+        state.watchId = state.fileWatcher->addWatch(state.watchedDirectory, state.listener.get(),
+                                                    false);
+
+        if (state.watchId >= 0) {
+            state.fileWatcher->watch();
+            state.watchActive = true;
+            return true;
+        }
+    } catch (const std::exception& ex) {
+        std::cerr << "efsw watcher setup failed for " << path << ": " << ex.what() << std::endl;
+    } catch (...) {
+        std::cerr << "efsw watcher setup failed for " << path << "." << std::endl;
+    }
+
+    state.listener.reset();
+    state.fileWatcher.reset();
+    state.watchId = static_cast<efsw::WatchID>(-1);
+    std::cerr << "efsw watcher unavailable for " << path
+              << "; falling back to the built-in polling watcher." << std::endl;
+#endif
+
     state.stopRequested.store(false, std::memory_order_release);
-    state.watcherThread = std::thread(
-        [&state, watchedPath = pluginPath.lexically_normal().string()]() {
-            auto lastObserved = getFileModificationTimeForWatch(watchedPath);
+    state.watcherThread = std::thread([&state]() {
+        const std::string watchedPath = state.watchedPath;
+        auto lastObserved = getFileModificationTimeForWatch(watchedPath);
 
-            while (!state.stopRequested.load(std::memory_order_acquire)) {
-                const auto currentObserved = getFileModificationTimeForWatch(watchedPath);
-                if (currentObserved > lastObserved) {
-                    lastObserved = currentObserved;
-                    notifyPluginChange(state);
-                } else if (currentObserved != std::chrono::system_clock::time_point()) {
-                    lastObserved = currentObserved;
-                }
-
-                std::this_thread::sleep_for(kWatchPollInterval);
+        while (!state.stopRequested.load(std::memory_order_acquire)) {
+            const auto currentObserved = getFileModificationTimeForWatch(watchedPath);
+            if (currentObserved > lastObserved) {
+                lastObserved = currentObserved;
+                notifyPluginChange(state);
+            } else if (currentObserved != std::chrono::system_clock::time_point()) {
+                lastObserved = currentObserved;
             }
-        });
+
+            std::this_thread::sleep_for(kWatchPollInterval);
+        }
+    });
+    state.watchActive = true;
 
     return true;
 }
@@ -136,13 +265,14 @@ void destroyWatcherState(const PluginLoader* loader) {
 bool consumeReloadSignal(const PluginLoader* loader,
                          const std::chrono::system_clock::time_point& currentModTime,
                          const std::chrono::system_clock::time_point& lastKnownModTime) {
+    const bool fileChanged = currentModTime > lastKnownModTime;
     WatcherState* state = findWatcherState(loader);
     if (!state) {
-        return currentModTime > lastKnownModTime;
+        return fileChanged;
     }
 
-    if (!state->reloadPending.load(std::memory_order_acquire)) {
-        return currentModTime > lastKnownModTime;
+    if (!state->watchActive || !state->reloadPending.load(std::memory_order_acquire)) {
+        return fileChanged;
     }
 
     Clock::time_point lastEventTime;
@@ -157,7 +287,7 @@ bool consumeReloadSignal(const PluginLoader* loader,
     }
 
     state->reloadPending.store(false, std::memory_order_release);
-    return currentModTime > lastKnownModTime;
+    return fileChanged || currentModTime != std::chrono::system_clock::time_point();
 }
 
 } // namespace

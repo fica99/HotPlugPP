@@ -22,6 +22,32 @@ std::string getInvalidPluginPath() {
     return (fs::temp_directory_path() / "hotplugpp_invalid_plugin.bin").string();
 }
 
+fs::path makePluginCopyForReloadTest(const std::string& sourcePath) {
+    const auto uniqueId =
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    const fs::path copyPath =
+        fs::temp_directory_path() / ("hotplugpp_reload_test_" + uniqueId + SHARED_LIB_SUFFIX);
+
+    std::error_code error;
+    fs::copy_file(sourcePath, copyPath, fs::copy_options::overwrite_existing, error);
+    if (error) {
+        return {};
+    }
+
+    return copyPath;
+}
+
+bool touchPluginFile(const fs::path& path) {
+    std::error_code error;
+    const auto currentWriteTime = fs::last_write_time(path, error);
+    if (error) {
+        return false;
+    }
+
+    fs::last_write_time(path, currentWriteTime + std::chrono::seconds(1), error);
+    return !error;
+}
+
 } // namespace
 
 class PluginLoaderTest : public ::testing::Test {
@@ -242,6 +268,38 @@ TEST_F(PluginLoaderTest, CheckAndReloadNoChange) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     EXPECT_FALSE(loader.checkAndReload());
     EXPECT_TRUE(loader.isLoaded());
+}
+
+TEST_F(PluginLoaderTest, CheckAndReloadAfterFileChangeReloadsPluginOnce) {
+    const fs::path pluginCopyPath = makePluginCopyForReloadTest(m_testPluginPath);
+    ASSERT_FALSE(pluginCopyPath.empty());
+
+    PluginLoader loader;
+    int callbackCount = 0;
+    loader.setReloadCallback([&callbackCount]() {
+        ++callbackCount;
+    });
+
+    ASSERT_TRUE(loader.loadPlugin(pluginCopyPath.string()));
+    ASSERT_TRUE(touchPluginFile(pluginCopyPath));
+
+    bool reloaded = false;
+    for (int attempt = 0; attempt < 10; ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (loader.checkAndReload()) {
+            reloaded = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(reloaded);
+    EXPECT_EQ(callbackCount, 1);
+    EXPECT_TRUE(loader.isLoaded());
+    EXPECT_FALSE(loader.checkAndReload());
+
+    loader.unloadPlugin();
+    std::error_code error;
+    fs::remove(pluginCopyPath, error);
 }
 
 // ============================================================================
