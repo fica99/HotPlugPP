@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-18\tests\version_tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-18\tests\plugin_loader_tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-18\tests\i_plugin_tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-18\tests\integration_tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-18\tests\support\test_main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{32EA58B8-1042-3134-B379-1B64636B5B2E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

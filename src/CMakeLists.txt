@@ -14,10 +14,8 @@ target_link_libraries(hotplugpp PUBLIC
 )
 
 if(HOTPLUGPP_HAS_EFSW)
-    if(TARGET efsw)
-        target_link_libraries(hotplugpp PRIVATE efsw)
-    elseif(TARGET efsw-static)
-        target_link_libraries(hotplugpp PRIVATE efsw-static)
+    if(HOTPLUGPP_EFSW_TARGET)
+        target_link_libraries(hotplugpp PRIVATE ${HOTPLUGPP_EFSW_TARGET})
     endif()
 
     target_compile_definitions(hotplugpp PRIVATE HOTPLUGPP_HAS_EFSW=1)

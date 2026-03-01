@@ -1,0 +1,164 @@
+Start testing: Mar 01 14:42 Central Europe Standard Time
+----------------------------------------------------------
+1/1 Testing: hotplugpp_tests
+1/1 Test: hotplugpp_tests
+Command: "C:/Program Files/CMake/bin/cmake.exe" "-DBUILD_DIR=C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-18/build-review-repro/tests" "-DTEST_TARGET=hotplugpp_tests" "-DTEST_EXECUTABLE=C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-18/build-review-repro/bin/Release/hotplugpp_tests.exe" "-DTEST_WORKING_DIR=C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-18/build-review-repro/bin/Release" "-DTEST_CONFIG=Release" "-P" "C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-18/tests/support/run_built_test.cmake"
+Directory: C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-18/build-review-repro/tests
+"hotplugpp_tests" start time: Mar 01 14:42 Central Europe Standard Time
+Output:
+----------------------------------------------------------
+MSBuild version 17.14.23+b0019275e for .NET Framework
+
+  failing_plugin.cpp
+     Creating library C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-18/build-review-repro/lib/Release/failing_plugin.lib and object C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-18/build-review-repro/lib/Release/failing_plugin.exp
+  failing_plugin.vcxproj -> C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-18\build-review-repro\tests\failing_plugin.dll
+  plugin_loader.cpp
+  hotplugpp.vcxproj -> C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-18\build-review-repro\lib\Release\hotplugpp.lib
+  test_plugin.cpp
+     Creating library C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-18/build-review-repro/lib/Release/test_plugin.lib and object C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-18/build-review-repro/lib/Release/test_plugin.exp
+  test_plugin.vcxproj -> C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-18\build-review-repro\tests\test_plugin.dll
+  version_tests.cpp
+  plugin_loader_tests.cpp
+  i_plugin_tests.cpp
+  integration_tests.cpp
+  test_main.cpp
+  Generating Code...
+  hotplugpp_tests.vcxproj -> C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-18\build-review-repro\bin\Release\hotplugpp_tests.exe
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Failed to load library: C:\Users\ficac\AppData\Local\Temp\hotplugpp_missing_plugin\missing_plugin.bin
+Error: The specified module could not be found.
+
+Failed to load library: C:\Users\ficac\AppData\Local\Temp\hotplugpp_invalid_plugin.bin
+Error: %1 is not a valid Win32 application.
+
+Plugin initialization failed: C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-18/build-review-repro/tests/failing_plugin.dll
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin file modified, reloading...
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin file modified, reloading...
+Plugin loaded successfully: TestPlugin v1.2.3
+Hot-reload watcher only supports plugin libraries: C:\Users\ficac\AppData\Local\Temp\hotplugpp_reload_test_393000698626200.bin
+Continuing without file watcher for: C:\Users\ficac\AppData\Local\Temp\hotplugpp_reload_test_393000698626200.bin
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin file modified, reloading...
+Hot-reload watcher only supports plugin libraries: C:\Users\ficac\AppData\Local\Temp\hotplugpp_reload_test_393000698626200.bin
+Continuing without file watcher for: C:\Users\ficac\AppData\Local\Temp\hotplugpp_reload_test_393000698626200.bin
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Failed to load library: 
+Error: The parameter is incorrect.
+
+Plugin loaded successfully: TestPlugin v1.2.3
+Failed to load library: C:\Users\ficac\AppData\Local\Temp\hotplugpp_missing_plugin\missing_plugin.bin
+Error: The specified module could not be found.
+
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Plugin loaded successfully: TestPlugin v1.2.3
+Failed to load library: C:\Users\ficac\AppData\Local\Temp\hotplugpp_missing_plugin\missing_plugin.bin
+Error: The specified module could not be found.
+
+Plugin loaded successfully: TestPlugin v1.2.3
+Failed to load library: 
+Error: The parameter is incorrect.
+
+Failed to load library: C:\
+Error: The specified module could not be found.
+
+Failed to load library: C:\Users\ficac\AppData\Local\Temp\hotplugpp_missing_plugin\missing_plugin.bin
+Error: The specified module could not be found.
+
+Plugin loaded successfully: TestPlugin v1.2.3
+<end of output>
+Test time =  11.68 sec
+----------------------------------------------------------
+Test Passed.
+"hotplugpp_tests" end time: Mar 01 14:42 Central Europe Standard Time
+"hotplugpp_tests" time elapsed: 00:00:11
+----------------------------------------------------------
+
+End testing: Mar 01 14:42 Central Europe Standard Time
