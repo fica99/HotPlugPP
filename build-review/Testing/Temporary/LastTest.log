@@ -1,0 +1,33 @@
+Start testing: Mar 01 23:52 Central Europe Standard Time
+----------------------------------------------------------
+1/2 Testing: gui_example_source_contract
+1/2 Test: gui_example_source_contract
+Command: "C:/Program Files/CMake/bin/cmake.exe" "-P" "C:/Users/ficac/Desktop/projects/my/HotPlugPP-planner-issue-19/build-review/tests/cmake/check_gui_example_source.cmake"
+Directory: C:/Users/ficac/Desktop/projects/my/HotPlugPP-planner-issue-19/build-review/tests
+"gui_example_source_contract" start time: Mar 01 23:52 Central Europe Standard Time
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"gui_example_source_contract" end time: Mar 01 23:52 Central Europe Standard Time
+"gui_example_source_contract" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/2 Testing: gui_example_docs_contract
+2/2 Test: gui_example_docs_contract
+Command: "C:/Program Files/CMake/bin/cmake.exe" "-P" "C:/Users/ficac/Desktop/projects/my/HotPlugPP-planner-issue-19/build-review/tests/cmake/check_gui_example_docs.cmake"
+Directory: C:/Users/ficac/Desktop/projects/my/HotPlugPP-planner-issue-19/build-review/tests
+"gui_example_docs_contract" start time: Mar 01 23:52 Central Europe Standard Time
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.03 sec
+----------------------------------------------------------
+Test Passed.
+"gui_example_docs_contract" end time: Mar 01 23:52 Central Europe Standard Time
+"gui_example_docs_contract" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Mar 01 23:52 Central Europe Standard Time

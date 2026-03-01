@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <ProjectOutputs>
+    <ProjectOutput>
+      <FullPath>C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\build-review\bin\Release\host_app.exe</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\build-review\bin\Release\math_plugin.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\build-review\bin\Release\sample_plugin.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
+      <FullPath>C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\build-review\x64\Release\ALL_BUILD</FullPath>
+    </ProjectOutput>
+  </ProjectOutputs>
+  <ContentFiles />
+  <SatelliteDlls />
+  <NonRecipeFileRefs />
+</Project>

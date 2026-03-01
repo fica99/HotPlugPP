@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-planner-issue-19\build-review\CMakeFiles\f4b56cec54fe11401cddd1a4cd44ee88\RUN_TESTS_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{4AB97CF9-8B70-3E8E-874D-D2E2681353B5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
