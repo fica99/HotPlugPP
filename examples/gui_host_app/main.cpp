@@ -1,312 +1,237 @@
-#define WIN32_LEAN_AND_MEAN
 #include "hotplugpp/plugin_loader.hpp"
 
-#include <chrono>
-#include <string>
-#include <vector>
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+#include "imgui.h"
 
-#include <windows.h>
+#include <array>
+#include <chrono>
+#include <cstdio>
+#include <filesystem>
+#include <string>
+
+#include <GLFW/glfw3.h>
 
 namespace {
 
-constexpr int kTimerId = 1001;
-constexpr int kWindowWidth = 560;
-constexpr int kWindowHeight = 300;
+constexpr std::size_t kPluginPathBufferSize = 512;
 
-enum ControlId {
-    kPluginPathLabel = 2001,
-    kPluginPathEdit,
-    kLoadButton,
-    kUnloadButton,
-    kReloadButton,
-    kStateValue,
-    kNameValue,
-    kVersionValue,
-    kStatusValue
-};
+std::string defaultPluginPath(const char* executablePath) {
+    namespace fs = std::filesystem;
+
+    std::error_code error;
+    fs::path executable = fs::absolute(fs::path(executablePath), error);
+    if (error) {
+        executable = fs::current_path(error);
+    }
+
+    fs::path baseDirectory = executable.has_parent_path() ? executable.parent_path()
+                                                          : fs::path(".");
+
+#if defined(_WIN32)
+    const char* pluginFileName = "sample_plugin.dll";
+#elif defined(__APPLE__)
+    const char* pluginFileName = "libsample_plugin.dylib";
+#else
+    const char* pluginFileName = "libsample_plugin.so";
+#endif
+
+    const fs::path siblingPath = baseDirectory / pluginFileName;
+    if (fs::exists(siblingPath, error) && !error) {
+        return siblingPath.string();
+    }
+
+    const fs::path parentPath = baseDirectory.parent_path() / pluginFileName;
+    if (fs::exists(parentPath, error) && !error) {
+        return parentPath.string();
+    }
+
+    return siblingPath.string();
+}
+
+void copyStringToBuffer(const std::string& value, std::array<char, kPluginPathBufferSize>& buffer) {
+    std::snprintf(buffer.data(), buffer.size(), "%s", value.c_str());
+}
 
 struct AppState {
     hotplugpp::PluginLoader loader;
-    HWND pluginPathEdit = nullptr;
-    HWND stateValue = nullptr;
-    HWND nameValue = nullptr;
-    HWND versionValue = nullptr;
-    HWND statusValue = nullptr;
-    std::string statusMessage = "Idle. Load a plugin to begin.";
-    std::chrono::steady_clock::time_point lastUpdate = std::chrono::steady_clock::now();
+    std::array<char, kPluginPathBufferSize> pluginPath = {};
+    std::string status = "Idle. Choose a plugin path, then load it.";
 
-    AppState() {
-        loader.setReloadCallback(
-            [this]() { statusMessage = "Plugin reloaded after a file change."; });
+    void refreshStatusAfterLoad(bool loaded) {
+        status = loaded ? "Plugin loaded successfully." : "Failed to load plugin.";
+    }
+
+    void loadPlugin() {
+        const std::string path(pluginPath.data());
+        if (path.empty()) {
+            status = "Enter a plugin path before loading.";
+            return;
+        }
+
+        refreshStatusAfterLoad(loader.loadPlugin(path));
+    }
+
+    void unloadPlugin() {
+        if (!loader.isLoaded()) {
+            status = "No plugin is currently loaded.";
+            return;
+        }
+
+        loader.unloadPlugin();
+        status = "Plugin unloaded.";
+    }
+
+    void checkAndReload() {
+        if (!loader.isLoaded()) {
+            status = "Load a plugin before checking for reloads.";
+            return;
+        }
+
+        const bool wasLoaded = loader.isLoaded();
+        const bool reloaded = loader.checkAndReload();
+
+        if (reloaded) {
+            if (status.empty()) {
+                status = "Plugin reloaded.";
+            }
+            return;
+        }
+
+        if (wasLoaded && !loader.isLoaded()) {
+            status = "Reload failed. The plugin is now unloaded.";
+            return;
+        }
+
+        status = "No plugin changes detected.";
     }
 };
 
-std::string getExecutableDirectory() {
-    std::vector<char> pathBuffer(MAX_PATH, '\0');
-    DWORD length = GetModuleFileNameA(nullptr, pathBuffer.data(),
-                                      static_cast<DWORD>(pathBuffer.size()));
-    if (length == 0 || length >= pathBuffer.size()) {
-        return ".";
-    }
-
-    std::string path(pathBuffer.data(), length);
-    const std::size_t separator = path.find_last_of("\\/");
-    if (separator == std::string::npos) {
-        return ".";
-    }
-
-    return path.substr(0, separator);
-}
-
-bool fileExists(const std::string& path) {
-    const DWORD attributes = GetFileAttributesA(path.c_str());
-    return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
-}
-
-std::string getDefaultPluginPath() {
-    const std::string executableDirectory = getExecutableDirectory();
-    const std::string pluginFileName = "sample_plugin.dll";
-    const std::string siblingPath = executableDirectory + "\\" + pluginFileName;
-    if (fileExists(siblingPath)) {
-        return siblingPath;
-    }
-
-    const std::size_t separator = executableDirectory.find_last_of("\\/");
-    if (separator != std::string::npos) {
-        const std::string parentPath = executableDirectory.substr(0, separator) + "\\" +
-                                       pluginFileName;
-        if (fileExists(parentPath)) {
-            return parentPath;
-        }
-    }
-
-    return siblingPath;
-}
-
-std::string readWindowText(HWND control) {
-    const int length = GetWindowTextLengthA(control);
-    if (length <= 0) {
-        return {};
-    }
-
-    std::vector<char> buffer(static_cast<std::size_t>(length) + 1U, '\0');
-    GetWindowTextA(control, buffer.data(), length + 1);
-    return std::string(buffer.data());
-}
-
-void setWindowText(HWND control, const std::string& value) {
-    SetWindowTextA(control, value.c_str());
-}
-
-void updatePluginDetails(AppState& state) {
-    if (state.loader.isLoaded()) {
-        hotplugpp::IPlugin* plugin = state.loader.getPlugin();
-        if (plugin != nullptr) {
-            setWindowText(state.stateValue, "Loaded");
-            setWindowText(state.nameValue, plugin->getName());
-            setWindowText(state.versionValue, plugin->getVersion().toString());
-        } else {
-            setWindowText(state.stateValue, "Loaded (plugin unavailable)");
-            setWindowText(state.nameValue, "-");
-            setWindowText(state.versionValue, "-");
-        }
-    } else {
-        setWindowText(state.stateValue, "Unloaded");
-        setWindowText(state.nameValue, "-");
-        setWindowText(state.versionValue, "-");
-    }
-
-    setWindowText(state.statusValue, state.statusMessage);
-}
-
-void loadPlugin(AppState& state) {
-    const std::string pluginPath = readWindowText(state.pluginPathEdit);
-    if (pluginPath.empty()) {
-        state.statusMessage = "Enter a plugin path before loading.";
-        updatePluginDetails(state);
-        return;
-    }
-
-    if (state.loader.loadPlugin(pluginPath)) {
-        state.statusMessage = "Plugin loaded successfully.";
-    } else {
-        state.statusMessage = "Failed to load plugin.";
-    }
-
-    updatePluginDetails(state);
-}
-
-void unloadPlugin(AppState& state) {
-    if (!state.loader.isLoaded()) {
-        state.statusMessage = "No plugin is currently loaded.";
-        updatePluginDetails(state);
-        return;
-    }
-
-    state.loader.unloadPlugin();
-    state.statusMessage = "Plugin unloaded.";
-    updatePluginDetails(state);
-}
-
-void checkAndReload(AppState& state) {
-    if (!state.loader.isLoaded()) {
-        state.statusMessage = "Load a plugin before checking for reloads.";
-        updatePluginDetails(state);
-        return;
-    }
-
-    const bool wasLoaded = state.loader.isLoaded();
-    const bool reloaded = state.loader.checkAndReload();
-
-    if (reloaded) {
-        if (state.statusMessage.empty()) {
-            state.statusMessage = "Plugin reloaded.";
-        }
-    } else if (wasLoaded && !state.loader.isLoaded()) {
-        state.statusMessage = "Reload failed. The plugin is now unloaded.";
-    } else {
-        state.statusMessage = "No plugin changes detected.";
-    }
-
-    updatePluginDetails(state);
-}
-
-LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
-    AppState* state = reinterpret_cast<AppState*>(GetWindowLongPtrA(window, GWLP_USERDATA));
-
-    switch (message) {
-    case WM_NCCREATE: {
-        CREATESTRUCTA* createStruct = reinterpret_cast<CREATESTRUCTA*>(lParam);
-        SetWindowLongPtrA(window, GWLP_USERDATA,
-                          reinterpret_cast<LONG_PTR>(createStruct->lpCreateParams));
-        return TRUE;
-    }
-    case WM_CREATE: {
-        state = reinterpret_cast<AppState*>(
-            reinterpret_cast<CREATESTRUCTA*>(lParam)->lpCreateParams);
-
-        CreateWindowExA(0, "STATIC", "Plugin path:", WS_CHILD | WS_VISIBLE, 20, 20, 90, 20, window,
-                        reinterpret_cast<HMENU>(kPluginPathLabel), nullptr, nullptr);
-
-        state->pluginPathEdit = CreateWindowExA(
-            WS_EX_CLIENTEDGE, "EDIT", getDefaultPluginPath().c_str(),
-            WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL, 110, 18, 330, 24, window,
-            reinterpret_cast<HMENU>(kPluginPathEdit), nullptr, nullptr);
-
-        CreateWindowExA(0, "BUTTON", "Load", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 450, 18, 80, 24,
-                        window, reinterpret_cast<HMENU>(kLoadButton), nullptr, nullptr);
-        CreateWindowExA(0, "BUTTON", "Unload", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 110, 58, 80, 24,
-                        window, reinterpret_cast<HMENU>(kUnloadButton), nullptr, nullptr);
-        CreateWindowExA(0, "BUTTON", "Check/Reload", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 200, 58,
-                        110, 24, window, reinterpret_cast<HMENU>(kReloadButton), nullptr, nullptr);
-
-        CreateWindowExA(0, "STATIC", "State:", WS_CHILD | WS_VISIBLE, 20, 108, 80, 20, window,
-                        nullptr, nullptr, nullptr);
-        state->stateValue = CreateWindowExA(0, "STATIC", "Unloaded", WS_CHILD | WS_VISIBLE, 110,
-                                            108, 420, 20, window,
-                                            reinterpret_cast<HMENU>(kStateValue), nullptr, nullptr);
-
-        CreateWindowExA(0, "STATIC", "Name:", WS_CHILD | WS_VISIBLE, 20, 138, 80, 20, window,
-                        nullptr, nullptr, nullptr);
-        state->nameValue = CreateWindowExA(0, "STATIC", "-", WS_CHILD | WS_VISIBLE, 110, 138, 420,
-                                           20, window, reinterpret_cast<HMENU>(kNameValue), nullptr,
-                                           nullptr);
-
-        CreateWindowExA(0, "STATIC", "Version:", WS_CHILD | WS_VISIBLE, 20, 168, 80, 20, window,
-                        nullptr, nullptr, nullptr);
-        state->versionValue = CreateWindowExA(
-            0, "STATIC", "-", WS_CHILD | WS_VISIBLE, 110, 168, 420, 20, window,
-            reinterpret_cast<HMENU>(kVersionValue), nullptr, nullptr);
-
-        CreateWindowExA(0, "STATIC", "Status:", WS_CHILD | WS_VISIBLE, 20, 208, 80, 20, window,
-                        nullptr, nullptr, nullptr);
-        state->statusValue = CreateWindowExA(
-            0, "STATIC", state->statusMessage.c_str(), WS_CHILD | WS_VISIBLE, 110, 208, 420, 40,
-            window, reinterpret_cast<HMENU>(kStatusValue), nullptr, nullptr);
-
-        SetTimer(window, kTimerId, 100, nullptr);
-        updatePluginDetails(*state);
-        return 0;
-    }
-    case WM_COMMAND:
-        if (state == nullptr) {
-            return 0;
-        }
-
-        switch (LOWORD(wParam)) {
-        case kLoadButton:
-            loadPlugin(*state);
-            return 0;
-        case kUnloadButton:
-            unloadPlugin(*state);
-            return 0;
-        case kReloadButton:
-            checkAndReload(*state);
-            return 0;
-        default:
-            return 0;
-        }
-    case WM_TIMER:
-        if (state != nullptr && wParam == kTimerId) {
-            const auto now = std::chrono::steady_clock::now();
-            const std::chrono::duration<float> delta = now - state->lastUpdate;
-            state->lastUpdate = now;
-
-            hotplugpp::IPlugin* plugin = state->loader.getPlugin();
-            if (plugin != nullptr) {
-                plugin->onUpdate(delta.count());
-            }
-        }
-        return 0;
-    case WM_CLOSE:
-        DestroyWindow(window);
-        return 0;
-    case WM_DESTROY:
-        if (state != nullptr) {
-            KillTimer(window, kTimerId);
-            state->loader.unloadPlugin();
-        }
-        PostQuitMessage(0);
-        return 0;
-    default:
-        return DefWindowProcA(window, message, wParam, lParam);
-    }
-}
-
 } // namespace
 
-int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int showCommand) {
-    const char* className = "HotPlugPPGuiHostWindow";
+int main(int argc, char* argv[]) {
+    if (!glfwInit()) {
+        return 1;
+    }
 
-    WNDCLASSA windowClass = {};
-    windowClass.lpfnWndProc = windowProc;
-    windowClass.hInstance = instance;
-    windowClass.lpszClassName = className;
-    windowClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    windowClass.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+    const char* glslVersion = "#version 130";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    if (RegisterClassA(&windowClass) == 0) {
+    GLFWwindow* window = glfwCreateWindow(960, 540, "HotPlugPP ImGui Host Sample", nullptr,
+                                          nullptr);
+    if (window == nullptr) {
+        glfwTerminate();
+        return 1;
+    }
+
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    ImGui::StyleColorsDark();
+
+    if (!ImGui_ImplGlfw_InitForOpenGL(window, true)) {
+        ImGui::DestroyContext();
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return 1;
+    }
+
+    if (!ImGui_ImplOpenGL3_Init(glslVersion)) {
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        glfwDestroyWindow(window);
+        glfwTerminate();
         return 1;
     }
 
     AppState state;
-    HWND window = CreateWindowExA(0, className, "HotPlugPP GUI Host Sample",
-                                  WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-                                  CW_USEDEFAULT, CW_USEDEFAULT, kWindowWidth, kWindowHeight,
-                                  nullptr, nullptr, instance, &state);
+    const char* executablePath = argc > 0 ? argv[0] : "";
+    copyStringToBuffer(defaultPluginPath(executablePath), state.pluginPath);
+    state.loader.setReloadCallback(
+        [&state]() { state.status = "Plugin reloaded after a file change."; });
 
-    if (window == nullptr) {
-        return 1;
+    auto previousFrame = std::chrono::steady_clock::now();
+
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+
+        const auto currentFrame = std::chrono::steady_clock::now();
+        const std::chrono::duration<float> delta = currentFrame - previousFrame;
+        previousFrame = currentFrame;
+
+        if (hotplugpp::IPlugin* plugin = state.loader.getPlugin()) {
+            plugin->onUpdate(delta.count());
+        }
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::SetNextWindowSize(ImVec2(720.0f, 0.0f), ImGuiCond_FirstUseEver);
+        ImGui::Begin("Plugin Host");
+
+        ImGui::TextWrapped(
+            "Load, unload, and manually check hot-reload for a plugin shared library.");
+        ImGui::Separator();
+
+        ImGui::TextUnformatted("Plugin path");
+        ImGui::InputText("##plugin-path", state.pluginPath.data(), state.pluginPath.size());
+
+        if (ImGui::Button("Load")) {
+            state.loadPlugin();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Unload")) {
+            state.unloadPlugin();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Check / Reload")) {
+            state.checkAndReload();
+        }
+
+        ImGui::Separator();
+
+        ImGui::Text("State: %s", state.loader.isLoaded() ? "Loaded" : "Unloaded");
+
+        if (hotplugpp::IPlugin* plugin = state.loader.getPlugin()) {
+            ImGui::Text("Name: %s", plugin->getName());
+            ImGui::Text("Version: %s", plugin->getVersion().toString().c_str());
+            ImGui::TextWrapped("Description: %s", plugin->getDescription());
+        } else {
+            ImGui::TextUnformatted("Name: -");
+            ImGui::TextUnformatted("Version: -");
+            ImGui::TextUnformatted("Description: -");
+        }
+
+        ImGui::Spacing();
+        ImGui::TextWrapped("Status: %s", state.status.c_str());
+
+        ImGui::End();
+
+        ImGui::Render();
+
+        int displayWidth = 0;
+        int displayHeight = 0;
+        glfwGetFramebufferSize(window, &displayWidth, &displayHeight);
+        glViewport(0, 0, displayWidth, displayHeight);
+        glClearColor(0.08f, 0.09f, 0.11f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        glfwSwapBuffers(window);
     }
 
-    ShowWindow(window, showCommand);
-    UpdateWindow(window);
+    state.loader.unloadPlugin();
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+    glfwDestroyWindow(window);
+    glfwTerminate();
 
-    MSG message = {};
-    while (GetMessageA(&message, nullptr, 0, 0) > 0) {
-        TranslateMessage(&message);
-        DispatchMessageA(&message);
-    }
-
-    return static_cast<int>(message.wParam);
+    return 0;
 }
