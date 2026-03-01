@@ -15,6 +15,75 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# Keep external command I/O in UTF-8 so gh JSON/text is decoded correctly on Windows.
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[Console]::InputEncoding = $utf8NoBom
+[Console]::OutputEncoding = $utf8NoBom
+$OutputEncoding = $utf8NoBom
+
+function Invoke-ProcessCapture {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+        [string[]]$ArgumentList = @()
+    )
+
+    $quotedArgs = foreach ($arg in $ArgumentList) {
+        if ($null -eq $arg) {
+            '""'
+            continue
+        }
+
+        $text = [string]$arg
+        if ($text -eq "") {
+            '""'
+            continue
+        }
+
+        if ($text -notmatch '[\s"]') {
+            $text
+            continue
+        }
+
+        $escaped = $text -replace '(\\*)"', '$1$1\"'
+        $escaped = $escaped -replace '(\\+)$', '$1$1'
+        '"' + $escaped + '"'
+    }
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $FilePath
+    $startInfo.Arguments = [string]::Join(' ', $quotedArgs)
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    [void]$process.Start()
+
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+
+    $process.WaitForExit()
+    $stdoutTask.Wait()
+    $stderrTask.Wait()
+
+    $stdout = [string]$stdoutTask.Result
+    $stderr = [string]$stderrTask.Result
+
+    return [pscustomobject]@{
+        ExitCode = $process.ExitCode
+        StdOut   = $stdout.TrimEnd("`r", "`n")
+        StdErr   = $stderr.TrimEnd("`r", "`n")
+    }
+}
+
+function Invoke-GitCapture {
+    param([string[]]$ArgumentList = @())
+    return Invoke-ProcessCapture -FilePath "git" -ArgumentList $ArgumentList
+}
+
 function Resolve-CommandPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -74,7 +143,22 @@ function Get-IssueContext {
     }
 
     if ($script:GhCommand) {
-        return & $script:GhCommand issue view $IssueNumber --comments
+        $issueJson = & $script:GhCommand issue view $IssueNumber --json title,body,url
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to read issue #$IssueNumber from GitHub."
+        }
+
+        $issue = $issueJson | ConvertFrom-Json
+        $body = if ($issue.body) { $issue.body.Trim() } else { "(no body provided)" }
+
+        return @"
+Issue #$IssueNumber
+Title: $($issue.title)
+URL: $($issue.url)
+
+Body:
+$body
+"@
     }
 
     $template = @"
@@ -141,6 +225,13 @@ function Invoke-CodexRole {
         }
 
         Get-Content -Raw $promptFile | & $script:CodexCommand @codeArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "Codex execution failed for role '$Role'."
+        }
+    }
+
+    if (-not (Test-Path $OutputFile)) {
+        throw "Role '$Role' did not produce the expected handoff file: $OutputFile"
     }
 }
 
@@ -197,15 +288,68 @@ function Sync-WorktreeFromSource {
         [Parameter(Mandatory = $true)]
         [string]$DestDir
     )
-    $pending = & git -C $SourceDir status --porcelain 2>$null
-    if ($pending) {
-        & git -C $SourceDir add -A | Out-Null
-        & git -C $SourceDir commit -m "auto: agent checkpoint" 2>&1 | Out-Null
+    $statusResult = Invoke-GitCapture -ArgumentList @("-C", $SourceDir, "status", "--porcelain")
+    if ($statusResult.ExitCode -ne 0) {
+        throw "Failed to inspect git status in '$SourceDir': $($statusResult.StdErr)"
     }
-    & git -C $DestDir fetch $SourceDir HEAD 2>&1 | Out-Null
-    $mergeResult = & git -C $DestDir merge FETCH_HEAD --no-edit 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Worktree sync from '$SourceDir' to '$DestDir' encountered issues: $mergeResult"
+
+    $pending = $statusResult.StdOut
+    if ($pending) {
+        $addResult = Invoke-GitCapture -ArgumentList @("-C", $SourceDir, "add", "-A")
+        if ($addResult.ExitCode -ne 0) {
+            throw "Failed to stage changes in '$SourceDir': $($addResult.StdErr)"
+        }
+
+        $commitResult = Invoke-GitCapture -ArgumentList @("-C", $SourceDir, "commit", "-m", "auto: agent checkpoint")
+        if ($commitResult.ExitCode -ne 0) {
+            throw "Failed to create auto-checkpoint commit in '$SourceDir': $($commitResult.StdErr)"
+        }
+    }
+
+    $fetchResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "fetch", "--quiet", $SourceDir, "HEAD")
+    if ($fetchResult.ExitCode -ne 0) {
+        throw "Worktree sync fetch from '$SourceDir' to '$DestDir' failed. $($fetchResult.StdErr)"
+    }
+
+    $mergeResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "merge", "FETCH_HEAD", "--no-edit")
+    if ($mergeResult.ExitCode -ne 0) {
+        throw "Worktree sync from '$SourceDir' to '$DestDir' encountered issues: $($mergeResult.StdErr)"
+    }
+}
+
+function Ensure-GitSafeDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path $Path)) {
+        return
+    }
+
+    $resolvedPath = (Resolve-Path $Path).Path
+    $accessCheck = Invoke-GitCapture -ArgumentList @("-C", $resolvedPath, "status", "--porcelain")
+    if ($accessCheck.ExitCode -eq 0) {
+        return
+    }
+
+    if ($accessCheck.StdErr -notmatch "dubious ownership") {
+        throw "Failed to access git worktree '$resolvedPath': $($accessCheck.StdErr)"
+    }
+
+    $existingResult = Invoke-GitCapture -ArgumentList @("config", "--global", "--get-all", "safe.directory")
+    if ($existingResult.ExitCode -gt 1) {
+        throw "Failed to read git safe.directory entries: $($existingResult.StdErr)"
+    }
+
+    $existing = if ($existingResult.StdOut) { $existingResult.StdOut -split '\r?\n' } else { @() }
+    if ($existing -contains $resolvedPath) {
+        return
+    }
+
+    $addSafeResult = Invoke-GitCapture -ArgumentList @("config", "--global", "--add", "safe.directory", $resolvedPath)
+    if ($addSafeResult.ExitCode -ne 0) {
+        throw "Failed to add git safe.directory for '$resolvedPath': $($addSafeResult.StdErr)"
     }
 }
 
@@ -225,6 +369,7 @@ if ($Provider -eq "github-copilot" -and -not $script:GhCommand) {
 $rootPath = (Resolve-Path $BaseRoot).Path
 $HandoffDir = Join-Path $rootPath $HandoffRoot
 New-Item -ItemType Directory -Force -Path $HandoffDir | Out-Null
+$HandoffDir = (Resolve-Path $HandoffDir).Path
 
 $issueContext = Get-IssueContext
 $issueFile = Join-Path $HandoffDir ("issue-$IssueNumber-context.md")
@@ -237,6 +382,17 @@ $testerDir = Resolve-RolePath -Role "tester" -Lenient:$allowMissingWorktrees
 $securityCheckerDir = Resolve-RolePath -Role "security-checker" -Lenient:$allowMissingWorktrees
 $reviewerDir = Resolve-RolePath -Role "reviewer" -Lenient:$allowMissingWorktrees
 $docCheckerDir = Resolve-RolePath -Role "doc-checker" -Lenient:$allowMissingWorktrees
+
+@(
+    $plannerDir,
+    $implementerDir,
+    $testerDir,
+    $securityCheckerDir,
+    $reviewerDir,
+    $docCheckerDir
+) | ForEach-Object {
+    Ensure-GitSafeDirectory -Path $_
+}
 
 $plannerOut = Join-Path $HandoffDir ("issue-$IssueNumber-planner.md")
 $implementerOut = Join-Path $HandoffDir ("issue-$IssueNumber-implementer.md")
@@ -417,16 +573,34 @@ Task:
 function Publish-PullRequest {
     if (-not ($PublishToGitHub -and $script:GhCommand)) { return }
     Write-Host "Creating pull request from implementer branch..."
-    $implBranch = & git -C $implementerDir rev-parse --abbrev-ref HEAD 2>$null
+    $branchResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "rev-parse", "--abbrev-ref", "HEAD")
+    if ($branchResult.ExitCode -ne 0) {
+        throw "Failed to determine implementer branch: $($branchResult.StdErr)"
+    }
+
+    $implBranch = $branchResult.StdOut
     if ($implBranch -and $implBranch -ne "HEAD") {
-        $pending = & git -C $implementerDir status --porcelain 2>$null
-        if ($pending) {
-            & git -C $implementerDir add -A | Out-Null
-            & git -C $implementerDir commit -m "feat: automated fix for issue #$IssueNumber" | Out-Null
+        $statusResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "status", "--porcelain")
+        if ($statusResult.ExitCode -ne 0) {
+            throw "Failed to inspect implementer worktree status: $($statusResult.StdErr)"
         }
-        $pushOutput = & git -C $implementerDir push origin $implBranch 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Failed to push branch '$implBranch'. Skipping PR creation. Error: $pushOutput"
+
+        $pending = $statusResult.StdOut
+        if ($pending) {
+            $addResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "add", "-A")
+            if ($addResult.ExitCode -ne 0) {
+                throw "Failed to stage implementer changes: $($addResult.StdErr)"
+            }
+
+            $commitResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "commit", "-m", "feat: automated fix for issue #$IssueNumber")
+            if ($commitResult.ExitCode -ne 0) {
+                throw "Failed to create implementer publish commit in '$implementerDir': $($commitResult.StdErr)"
+            }
+        }
+
+        $pushResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "push", "origin", $implBranch)
+        if ($pushResult.ExitCode -ne 0) {
+            Write-Warning "Failed to push branch '$implBranch'. Skipping PR creation. Error: $($pushResult.StdErr)"
         } else {
             $prResult = & $script:GhCommand pr create `
                 --title "fix: automated resolution of issue #$IssueNumber" `
@@ -435,7 +609,10 @@ function Publish-PullRequest {
                 --head $implBranch 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "PR created: $prResult"
-                & $script:GhCommand pr merge --auto --squash 2>&1 | Out-Null
+                $mergeOutput = & $script:GhCommand pr merge --auto --squash 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    throw "PR was created but auto-merge could not be enabled: $mergeOutput"
+                }
                 Write-Host "Auto-merge enabled."
             } else {
                 Write-Warning "PR creation failed (PR may already exist). Output: $prResult"
@@ -447,14 +624,35 @@ function Publish-PullRequest {
 function Publish-RoleBranch {
     param([Parameter(Mandatory = $true)][string]$RoleDir)
     if (-not $PublishToGitHub) { return }
-    $branch = & git -C $RoleDir rev-parse --abbrev-ref HEAD 2>$null
-    if (-not $branch -or $branch -eq "HEAD") { return }
-    $pending = & git -C $RoleDir status --porcelain 2>$null
-    if ($pending) {
-        & git -C $RoleDir add -A | Out-Null
-        & git -C $RoleDir commit -m "auto: agent checkpoint" 2>&1 | Out-Null
+    $branchResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "rev-parse", "--abbrev-ref", "HEAD")
+    if ($branchResult.ExitCode -ne 0) {
+        throw "Failed to determine role branch in '$RoleDir': $($branchResult.StdErr)"
     }
-    & git -C $RoleDir push origin $branch 2>&1 | Out-Null
+
+    $branch = $branchResult.StdOut
+    if (-not $branch -or $branch -eq "HEAD") { return }
+    $statusResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "status", "--porcelain")
+    if ($statusResult.ExitCode -ne 0) {
+        throw "Failed to inspect role worktree status in '$RoleDir': $($statusResult.StdErr)"
+    }
+
+    $pending = $statusResult.StdOut
+    if ($pending) {
+        $addResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "add", "-A")
+        if ($addResult.ExitCode -ne 0) {
+            throw "Failed to stage role changes in '$RoleDir': $($addResult.StdErr)"
+        }
+
+        $commitResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "commit", "-m", "auto: agent checkpoint")
+        if ($commitResult.ExitCode -ne 0) {
+            throw "Failed to create auto-checkpoint commit in '$RoleDir': $($commitResult.StdErr)"
+        }
+    }
+
+    $pushResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "push", "origin", $branch)
+    if ($pushResult.ExitCode -ne 0) {
+        throw "Failed to push role branch '$branch' from '$RoleDir': $($pushResult.StdErr)"
+    }
 }
 
 if ($SingleRole) {
