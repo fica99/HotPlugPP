@@ -10,6 +10,7 @@
 #include <mutex>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #ifdef _WIN32
@@ -45,6 +46,14 @@ bool isDynamicLibraryPath(const fs::path& path) {
     return extension == ".dll" || extension == ".so" || extension == ".dylib";
 }
 
+std::string normalizeWatchPathString(const fs::path& path) {
+    std::string normalized = path.lexically_normal().string();
+#ifdef _WIN32
+    normalized = toLowerCopy(std::move(normalized));
+#endif
+    return normalized;
+}
+
 struct WatcherState;
 
 #if defined(HOTPLUGPP_HAS_EFSW)
@@ -66,23 +75,8 @@ struct WatcherState {
 
 #if defined(HOTPLUGPP_HAS_EFSW)
     std::unique_ptr<efsw::FileWatcher> fileWatcher;
-    std::unique_ptr<ReloadListener> listener;
     efsw::WatchID watchId = static_cast<efsw::WatchID>(-1);
 #endif
-
-    bool matchesPath(const std::string& filename,
-                     const std::string& oldFilename = std::string()) const {
-        std::lock_guard<std::mutex> lock(mutex);
-        if (watchedFilename.empty()) {
-            return false;
-        }
-
-        const auto matches = [this](const std::string& candidate) {
-            return !candidate.empty() && fs::path(candidate).filename().string() == watchedFilename;
-        };
-
-        return matches(filename) || matches(oldFilename);
-    }
 
     void setWatchedTarget(std::string path, std::string directory, std::string filename) {
         std::lock_guard<std::mutex> lock(mutex);
@@ -96,21 +90,52 @@ std::mutex g_watcherStatesMutex;
 std::unordered_map<const PluginLoader*, std::unique_ptr<WatcherState>> g_watcherStates;
 
 #if defined(HOTPLUGPP_HAS_EFSW)
+std::mutex g_activeWatchesMutex;
+std::unordered_set<WatcherState*> g_activeWatches;
+
 class CallbackActivityGuard {
   public:
-    explicit CallbackActivityGuard(WatcherState& state) : m_state(state) {
-        std::lock_guard<std::mutex> lock(m_state.mutex);
-        ++m_state.callbacksInFlight;
+    CallbackActivityGuard(WatcherState& state, const std::string& directory,
+                          const std::string& filename, const std::string& oldFilename) {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        if (state.stopRequested.load(std::memory_order_acquire) || state.watchedFilename.empty() ||
+            state.watchedDirectory != directory) {
+            return;
+        }
+
+        const auto matches = [&state](const std::string& candidate) {
+            if (candidate.empty()) {
+                return false;
+            }
+
+            return normalizeWatchPathString(fs::path(candidate).filename()) ==
+                   state.watchedFilename;
+        };
+
+        if (!matches(filename) && !matches(oldFilename)) {
+            return;
+        }
+
+        ++state.callbacksInFlight;
+        m_state = &state;
     }
 
     ~CallbackActivityGuard() {
-        std::lock_guard<std::mutex> lock(m_state.mutex);
-        --m_state.callbacksInFlight;
-        m_state.callbackIdle.notify_all();
+        if (!m_state) {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(m_state->mutex);
+        --m_state->callbacksInFlight;
+        m_state->callbackIdle.notify_all();
     }
 
+    explicit operator bool() const { return m_state != nullptr; }
+
+    WatcherState& state() const { return *m_state; }
+
   private:
-    WatcherState& m_state;
+    WatcherState* m_state = nullptr;
 };
 #endif
 
@@ -151,33 +176,47 @@ void notifyPluginChange(WatcherState& state) {
 #if defined(HOTPLUGPP_HAS_EFSW)
 class ReloadListener final : public efsw::FileWatchListener {
   public:
-    explicit ReloadListener(WatcherState& state) : m_state(state) {}
-
-    void handleFileAction(efsw::WatchID, const std::string&, const std::string& filename,
+    void handleFileAction(efsw::WatchID, const std::string& directory, const std::string& filename,
                           efsw::Action action, std::string oldFilename) override {
         (void)action;
-        CallbackActivityGuard callbackGuard(m_state);
+        const std::string normalizedDirectory = normalizeWatchPathString(fs::path(directory));
 
-        if (m_state.stopRequested.load(std::memory_order_acquire)) {
-            return;
+        std::lock_guard<std::mutex> registryLock(g_activeWatchesMutex);
+        for (WatcherState* state : g_activeWatches) {
+            CallbackActivityGuard callbackGuard(*state, normalizedDirectory, filename, oldFilename);
+            if (!callbackGuard) {
+                continue;
+            }
+
+            notifyPluginChange(callbackGuard.state());
         }
-
-        if (!m_state.matchesPath(filename, oldFilename)) {
-            return;
-        }
-
-        notifyPluginChange(m_state);
     }
-
-  private:
-    WatcherState& m_state;
 };
+
+ReloadListener& getReloadListener() {
+    static ReloadListener listener;
+    return listener;
+}
+
+void registerActiveWatch(WatcherState& state) {
+    std::lock_guard<std::mutex> lock(g_activeWatchesMutex);
+    g_activeWatches.insert(&state);
+}
+
+void unregisterActiveWatch(WatcherState& state) {
+    std::lock_guard<std::mutex> lock(g_activeWatchesMutex);
+    g_activeWatches.erase(&state);
+}
 #endif
 
 void stopWatching(WatcherState& state) {
     state.stopRequested.store(true, std::memory_order_release);
 
 #if defined(HOTPLUGPP_HAS_EFSW)
+    if (state.watchId >= 0) {
+        unregisterActiveWatch(state);
+    }
+
     if (state.fileWatcher && state.watchId >= 0) {
         state.fileWatcher->removeWatch(state.watchId);
     }
@@ -200,7 +239,6 @@ void stopWatching(WatcherState& state) {
     }
 
 #if defined(HOTPLUGPP_HAS_EFSW)
-    state.listener.reset();
     state.fileWatcher.reset();
     state.watchId = static_cast<efsw::WatchID>(-1);
 #endif
@@ -232,31 +270,38 @@ bool startWatching(const PluginLoader* loader, const std::string& path) {
         return false;
     }
 
-    const std::string watchedPath = absolutePluginPath.lexically_normal().string();
-    const std::string watchedDirectory = pluginDirectory.lexically_normal().string();
-    const std::string watchedFilename = absolutePluginPath.filename().string();
+    const std::string watchedPath = normalizeWatchPathString(absolutePluginPath);
+    const std::string watchedDirectory = normalizeWatchPathString(pluginDirectory);
+    const std::string watchedFilename = normalizeWatchPathString(absolutePluginPath.filename());
 
     state.setWatchedTarget(watchedPath, watchedDirectory, watchedFilename);
     state.stopRequested.store(false, std::memory_order_release);
 
 #if defined(HOTPLUGPP_HAS_EFSW)
+    bool registeredWithEfsw = false;
     try {
-        state.listener = std::make_unique<ReloadListener>(state);
         state.fileWatcher = std::make_unique<efsw::FileWatcher>();
-        state.watchId = state.fileWatcher->addWatch(watchedDirectory, state.listener.get(), false);
+        state.watchId = state.fileWatcher->addWatch(watchedDirectory, &getReloadListener(), false);
 
         if (state.watchId >= 0) {
+            registerActiveWatch(state);
+            registeredWithEfsw = true;
             state.fileWatcher->watch();
             state.watchActive = true;
             return true;
         }
     } catch (const std::exception& ex) {
+        if (registeredWithEfsw) {
+            unregisterActiveWatch(state);
+        }
         std::cerr << "efsw watcher setup failed for " << path << ": " << ex.what() << std::endl;
     } catch (...) {
+        if (registeredWithEfsw) {
+            unregisterActiveWatch(state);
+        }
         std::cerr << "efsw watcher setup failed for " << path << "." << std::endl;
     }
 
-    state.listener.reset();
     state.fileWatcher.reset();
     state.watchId = static_cast<efsw::WatchID>(-1);
     std::cerr << "efsw watcher unavailable for " << path
