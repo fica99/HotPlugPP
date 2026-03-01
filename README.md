@@ -24,6 +24,25 @@ cmake .. && cmake --build .
 
 See [BUILD](https://github.com/fica99/HotPlugPP/wiki/BUILD) for detailed build instructions and platform-specific guidance.
 
+## GUI Sample
+
+The repository now includes an optional `gui_host_app` example that provides a small non-terminal
+window for loading, unloading, and manually checking hot-reload status for a plugin.
+
+- Configure with `-DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON` to build the GUI sample.
+- The current implementation targets Windows only and is skipped with a CMake status message on
+  other platforms.
+- `gui_host_app` defaults to loading `sample_plugin.dll` from the same build output directory as
+  the executable.
+
+Example Windows build and run flow:
+
+```powershell
+cmake -S . -B build -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON
+cmake --build build --config Release --parallel
+.\build\bin\gui_host_app.exe
+```
+
 ## Creating a Plugin
 
 ```cpp

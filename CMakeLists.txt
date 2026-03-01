@@ -24,6 +24,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
+option(HOTPLUGPP_BUILD_GUI_EXAMPLE "Build the optional GUI host example" ON)
+
 # Add subdirectories
 add_subdirectory(src)
 add_subdirectory(examples)

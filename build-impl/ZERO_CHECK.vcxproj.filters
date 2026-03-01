@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-impl\CMakeFiles\a2c23f29e680970da3170ac8661a6cdb\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{563B133A-13E1-38E6-93B2-4C183B5E39D2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
