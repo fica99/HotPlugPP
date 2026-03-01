@@ -55,10 +55,8 @@ class PluginLoader {
      */
     void unloadPlugin();
 
-    /**
-     * @brief Check if plugin file has been modified and reload if necessary
-     * @return true if plugin was reloaded, false otherwise
-     */
+    /// Apply a queued watcher event or direct file change and reload if necessary.
+    /// @return true if plugin was reloaded, false otherwise
     bool checkAndReload();
 
     /**

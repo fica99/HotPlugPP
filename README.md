@@ -5,24 +5,43 @@ A lightweight, cross-platform plugin system in modern C++ with support for runti
 ## Features
 
 - 🔌 **Dynamic Loading**: Load and unload plugins at runtime
-- 🔥 **Hot-Reloading**: Automatically detect and reload modified plugins without restarting
+- 🔥 **Watcher-Based Hot-Reloading**: Queue reloads from a background watcher and apply them on your host loop
 - 🌐 **Cross-Platform**: Works on Windows (.dll), Linux (.so), and macOS (.dylib)
 - 🎯 **Clean Interface**: Simple, intuitive plugin API
 - 🛠️ **Modern C++**: Uses C++17 features for clean, maintainable code
-- 🚀 **Lightweight**: Minimal dependencies and overhead
+- 🚀 **Pragmatic Fallbacks**: Uses `efsw` when available and falls back to built-in polling when it is not
 
 ## Quick Start
 
 ```bash
-# Build
-mkdir build && cd build
-cmake .. && cmake --build .
+# Configure
+cmake -S . -B build
+
+# Build the host example and sample plugin explicitly
+cmake --build build --config Release --target host_app sample_plugin
 
 # Run example
-./bin/host_app ./bin/libsample_plugin.so
+./build/bin/host_app ./build/bin/libsample_plugin.so
 ```
 
 See [BUILD](https://github.com/fica99/HotPlugPP/wiki/BUILD) for detailed build instructions and platform-specific guidance.
+
+Examples and tests are configured with `EXCLUDE_FROM_ALL`, so they are not built by the default `cmake --build build` invocation. Build the targets you need explicitly.
+
+## Watcher Configuration
+
+HotPlugPP now starts a background file watcher automatically after `loadPlugin()` succeeds.
+
+- `HOTPLUGPP_USE_EFSW=ON` enables `efsw` integration when an installed package or fetched source is available.
+- `HOTPLUGPP_FETCH_EFSW=ON` allows CMake to fetch `efsw` with `FetchContent` when it is not already installed.
+- If `efsw` is unavailable or the fetch probe cannot reach the source, HotPlugPP logs a status message and keeps hot-reload enabled by using the built-in polling watcher instead.
+- If the plugin path is invalid or the containing directory cannot be watched, the plugin still loads; only automatic watching is disabled for that load.
+
+To force the polling watcher even when `efsw` is available:
+
+```bash
+cmake -S . -B build -DHOTPLUGPP_USE_EFSW=OFF
+```
 
 ## Creating a Plugin
 
@@ -54,18 +73,20 @@ int main() {
     if (!loader.loadPlugin("./libmy_plugin.so")) {
         return 1;
     }
-    
+
     auto* plugin = loader.getPlugin();
     if (plugin) {
         plugin->onUpdate(0.016f);
     }
-    loader.checkAndReload();  // Detects and reloads modified plugins
-    
+    loader.checkAndReload();  // Applies queued watcher events on the caller thread
+
     return 0;
 }
 ```
 
 See [API](https://github.com/fica99/HotPlugPP/wiki/API) for complete API documentation.
+
+`checkAndReload()` still needs to be called from your main loop. The background watcher only marks the plugin as pending reload, coalesces duplicate change notifications, and leaves the unload/reload work on the caller thread.
 
 ## Platform Support
 
@@ -87,25 +108,27 @@ See [API](https://github.com/fica99/HotPlugPP/wiki/API) for complete API documen
 - **[BUILD](https://github.com/fica99/HotPlugPP/wiki/BUILD)** - Detailed build instructions for all platforms
 - **[TUTORIAL](https://github.com/fica99/HotPlugPP/wiki/TUTORIAL)** - Step-by-step plugin creation guide
 - **[API](https://github.com/fica99/HotPlugPP/wiki/API)** - Complete API reference
+- **[Hot-Reload Watcher](docs/hot-reload-watcher.md)** - `efsw` integration, polling fallback, and verification steps
 - **[Multi-Agent Workflow](docs/multi-agent-workflow.md)** - Autonomous multi-agent development process
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
 
 ## Examples
 
 The `examples/` directory contains:
-- `host_app.cpp` - Host application with hot-reload monitoring
+- `host_app.cpp` - Host application that applies watcher-queued reloads from the main loop
 - `sample_plugin/` - Simple plugin demonstrating basic features
 - `math_plugin/` - Complex plugin with state management
 
 Run example with hot-reload:
 ```bash
-# Terminal 1: Run host
-./bin/host_app ./bin/libsample_plugin.so
+# Terminal 1: Build and run the host
+cmake --build build --config Release --target host_app sample_plugin
+./build/bin/host_app ./build/bin/libsample_plugin.so
 
 # Terminal 2: Modify and rebuild
 # Edit examples/sample_plugin/SamplePlugin.cpp
-cmake --build . --target sample_plugin
-# Watch Terminal 1 for hot-reload!
+cmake --build build --config Release --target sample_plugin
+# The watcher will queue one reload and the host loop will apply it on the next check.
 ```
 
 ## Contributing
