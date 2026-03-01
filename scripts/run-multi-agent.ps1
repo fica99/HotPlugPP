@@ -143,12 +143,12 @@ function Get-IssueContext {
     }
 
     if ($script:GhCommand) {
-        $issueJson = & $script:GhCommand issue view $IssueNumber --json title,body,url
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to read issue #$IssueNumber from GitHub."
+        $issueResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @("issue", "view", "$IssueNumber", "--json", "title,body,url")
+        if ($issueResult.ExitCode -ne 0) {
+            throw "Failed to read issue #$IssueNumber from GitHub. $($issueResult.StdErr)"
         }
 
-        $issue = $issueJson | ConvertFrom-Json
+        $issue = $issueResult.StdOut | ConvertFrom-Json
         $body = if ($issue.body) { $issue.body.Trim() } else { "(no body provided)" }
 
         return @"
@@ -257,7 +257,10 @@ function Publish-HandoffComment {
     $content = Get-Content -Raw $OutputFile
     Set-Content -Path $bodyFile -Value ($header + "`n" + $content) -Encoding UTF8
 
-    & $script:GhCommand issue comment $IssueNumber --body-file $bodyFile | Out-Null
+    $commentResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @("issue", "comment", "$IssueNumber", "--body-file", $bodyFile)
+    if ($commentResult.ExitCode -ne 0) {
+        throw "Failed to publish GitHub comment for role '$Role': $($commentResult.StdErr)"
+    }
 }
 
 function Test-AgentPass {
@@ -303,6 +306,24 @@ function Sync-WorktreeFromSource {
         $commitResult = Invoke-GitCapture -ArgumentList @("-C", $SourceDir, "commit", "-m", "auto: agent checkpoint")
         if ($commitResult.ExitCode -ne 0) {
             throw "Failed to create auto-checkpoint commit in '$SourceDir': $($commitResult.StdErr)"
+        }
+    }
+
+    $destStatusResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "status", "--porcelain")
+    if ($destStatusResult.ExitCode -ne 0) {
+        throw "Failed to inspect git status in '$DestDir': $($destStatusResult.StdErr)"
+    }
+
+    $destPending = $destStatusResult.StdOut
+    if ($destPending) {
+        $destAddResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "add", "-A")
+        if ($destAddResult.ExitCode -ne 0) {
+            throw "Failed to stage changes in '$DestDir': $($destAddResult.StdErr)"
+        }
+
+        $destCommitResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "commit", "-m", "auto: destination checkpoint")
+        if ($destCommitResult.ExitCode -ne 0) {
+            throw "Failed to create destination checkpoint commit in '$DestDir': $($destCommitResult.StdErr)"
         }
     }
 
@@ -602,20 +623,22 @@ function Publish-PullRequest {
         if ($pushResult.ExitCode -ne 0) {
             Write-Warning "Failed to push branch '$implBranch'. Skipping PR creation. Error: $($pushResult.StdErr)"
         } else {
-            $prResult = & $script:GhCommand pr create `
-                --title "fix: automated resolution of issue #$IssueNumber" `
-                --body "Closes #$IssueNumber" `
-                --base main `
-                --head $implBranch 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "PR created: $prResult"
-                $mergeOutput = & $script:GhCommand pr merge --auto --squash 2>&1
-                if ($LASTEXITCODE -ne 0) {
-                    throw "PR was created but auto-merge could not be enabled: $mergeOutput"
+            $prResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @(
+                "pr", "create",
+                "--title", "fix: automated resolution of issue #$IssueNumber",
+                "--body", "Closes #$IssueNumber",
+                "--base", "main",
+                "--head", $implBranch
+            )
+            if ($prResult.ExitCode -eq 0) {
+                Write-Host "PR created: $($prResult.StdOut)"
+                $mergeResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @("pr", "merge", "--auto", "--squash")
+                if ($mergeResult.ExitCode -ne 0) {
+                    throw "PR was created but auto-merge could not be enabled: $($mergeResult.StdErr)"
                 }
                 Write-Host "Auto-merge enabled."
             } else {
-                Write-Warning "PR creation failed (PR may already exist). Output: $prResult"
+                Write-Warning "PR creation failed (PR may already exist). Output: $($prResult.StdErr)"
             }
         }
     }
