@@ -42,6 +42,7 @@
 
 # Build directories
 build/
+build-*/
 bin/
 lib/
 
@@ -56,6 +57,7 @@ Makefile
 !check-format.cmake
 !find-clang-format.cmake
 !find-source-files.cmake
+!tests/support/run_built_test.cmake
 
 # IDE files
 .vscode/
