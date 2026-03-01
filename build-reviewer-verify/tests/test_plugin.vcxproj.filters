@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-reviewer-issue-18\tests\test_plugin\test_plugin.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{A79CB533-9FE0-3BF6-9D30-6FF234FCD494}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
