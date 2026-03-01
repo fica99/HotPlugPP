@@ -137,6 +137,7 @@ function New-AgentWorktree {
 }
 
 New-AgentWorktree -Role "planner"
+New-AgentWorktree -Role "architect"
 New-AgentWorktree -Role "implementer"
 New-AgentWorktree -Role "tester"
 New-AgentWorktree -Role "security-checker"

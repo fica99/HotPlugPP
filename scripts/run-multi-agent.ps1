@@ -9,7 +9,7 @@ param(
     [string]$SingleRole = "",
     [switch]$PublishToGitHub,
     [switch]$DryRun,
-    [int]$MaxIterations = 3
+    [int]$MaxIterations = 2
 )
 
 Set-StrictMode -Version Latest
@@ -519,6 +519,7 @@ Set-Content -Path $issueFile -Value $issueContext -Encoding UTF8
 
 $allowMissingWorktrees = [bool]$SingleRole
 $plannerDir = Resolve-RolePath -Role "planner" -Lenient:$allowMissingWorktrees
+$architectDir = Resolve-RolePath -Role "architect" -Lenient:$allowMissingWorktrees
 $implementerDir = Resolve-RolePath -Role "implementer" -Lenient:$allowMissingWorktrees
 $testerDir = Resolve-RolePath -Role "tester" -Lenient:$allowMissingWorktrees
 $securityCheckerDir = Resolve-RolePath -Role "security-checker" -Lenient:$allowMissingWorktrees
@@ -527,6 +528,7 @@ $docCheckerDir = Resolve-RolePath -Role "doc-checker" -Lenient:$allowMissingWork
 
 @(
     $plannerDir,
+    $architectDir,
     $implementerDir,
     $testerDir,
     $securityCheckerDir,
@@ -537,6 +539,8 @@ $docCheckerDir = Resolve-RolePath -Role "doc-checker" -Lenient:$allowMissingWork
 }
 
 $plannerOut = Join-Path $HandoffDir ("issue-$IssueNumber-planner.md")
+$architectOut = Join-Path $HandoffDir ("issue-$IssueNumber-architect.md")
+$plannerReviewOut = Join-Path $HandoffDir ("issue-$IssueNumber-planner-review.md")
 $implementerOut = Join-Path $HandoffDir ("issue-$IssueNumber-implementer.md")
 $testerOut = Join-Path $HandoffDir ("issue-$IssueNumber-tester.md")
 $securityCheckerOut = Join-Path $HandoffDir ("issue-$IssueNumber-security-checker.md")
@@ -565,6 +569,7 @@ Issue #$IssueNumber.
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 
 Task:
 - Implement according to planner handoff.
@@ -576,12 +581,50 @@ Task:
   - Remaining risks
 "@
 
+$architectPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+
+Task:
+- Produce architecture/design handoff for implementation.
+- Define key technical decisions, module boundaries, trade-offs, and integration constraints.
+- Call out risks and exact acceptance checkpoints for Implementer.
+- End with:
+  - Summary of changes: none (architecture stage)
+  - Files changed: none
+  - Validation commands run: none
+  - Remaining assumptions/risks
+"@
+
+$plannerReviewPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+- Architect handoff: $architectOut
+- Implementer handoff: $implementerOut
+
+Task:
+- Review implementation strictly against the original plan/scope and architect constraints.
+- Return only blocking gaps/regressions, ordered by severity.
+- End the output with exactly one JSON line:
+  AGENT_STATUS: {"status":"READY","findings":N}
+  or
+  AGENT_STATUS: {"status":"NOT READY","findings":N}
+  where N is the count of blocking findings.
+"@
+
 $testerPrompt = @"
 Issue #$IssueNumber.
 
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 - Implementer handoff: $implementerOut
 
 Task:
@@ -605,9 +648,8 @@ Issue #$IssueNumber.
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 - Implementer handoff: $implementerOut
-- Tester handoff: $testerOut
-- SecurityChecker handoff: $securityCheckerOut
 
 Task:
 - Perform review with focus on bugs, regressions, API compatibility, and testing gaps.
@@ -625,6 +667,7 @@ Issue #$IssueNumber.
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 - Implementer handoff: $implementerOut
 - Tester handoff: $testerOut
 
@@ -650,13 +693,12 @@ Issue #$IssueNumber.
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 - Previous implementer handoff: $implementerOut
 - Tester handoff (contains failures): $testerOut
-- SecurityChecker handoff (may not exist yet): $securityCheckerOut
 
 Task:
 - Fix all build, test, and format failures identified by the Tester.
-- Fix any critical or high severity security findings identified by the SecurityChecker (if present).
 - Make code changes directly in this worktree.
 - At end, report:
   - Root causes identified
@@ -665,15 +707,36 @@ Task:
   - Remaining risks
 "@
 
+$implementerFixFromPlannerReviewPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+- Architect handoff: $architectOut
+- Previous implementer handoff: $implementerOut
+- Planner review handoff (contains findings): $plannerReviewOut
+
+Task:
+- Address all blocking findings from Planner review.
+- Keep changes strictly within planned scope unless a blocker requires adjustment.
+- Re-run build/test/format checks relevant to your changes.
+- At end, report:
+  - Findings addressed (reference planner-review finding)
+  - Files changed
+  - Validation commands run and results
+  - Remaining unresolved findings (if any) with justification
+  - Remaining risks or assumptions
+"@
+
 $implementerFixFromReviewerPrompt = @"
 Issue #$IssueNumber.
 
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 - Previous implementer handoff: $implementerOut
-- Tester handoff: $testerOut
-- SecurityChecker handoff: $securityCheckerOut
 - Reviewer handoff (contains findings): $reviewerOut
 
 Task:
@@ -689,12 +752,36 @@ Task:
   - Remaining risks or assumptions
 "@
 
+$implementerFixFromSecurityPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+- Architect handoff: $architectOut
+- Previous implementer handoff: $implementerOut
+- SecurityChecker handoff (contains findings): $securityCheckerOut
+
+Task:
+- Address all critical/high (and applicable medium) security findings.
+- Preserve API/ABI unless a security fix explicitly requires change and is documented.
+- Re-run build/test/format checks relevant to your changes.
+- At end, report:
+  - Findings addressed (reference security finding)
+  - Files changed
+  - Validation commands run and results
+  - Remaining unresolved findings (if any) with justification
+  - Remaining risks or assumptions
+"@
+
 $docCheckerPrompt = @"
 Issue #$IssueNumber.
 
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
+- Planner review handoff: $plannerReviewOut
 - Implementer handoff: $implementerOut
 - Tester handoff: $testerOut
 - SecurityChecker handoff: $securityCheckerOut
@@ -807,7 +894,15 @@ if ($SingleRole) {
             Publish-HandoffComment -Role "planner" -OutputFile $plannerOut
             Publish-RoleBranch -RoleDir $plannerDir
         }
+        "architect" {
+            if (Test-Path $plannerDir) { Sync-WorktreeFromSource -SourceDir $plannerDir -DestDir $architectDir }
+            Write-Host "Running Architect (single-role mode)..."
+            Invoke-CodexRole -Role "architect" -RolePrompt $architectPrompt -RoleDir $architectDir -OutputFile $architectOut
+            Publish-HandoffComment -Role "architect" -OutputFile $architectOut
+            Publish-RoleBranch -RoleDir $architectDir
+        }
         "implementer" {
+            if (Test-Path $architectDir) { Sync-WorktreeFromSource -SourceDir $architectDir -DestDir $implementerDir }
             Write-Host "Running Implementer (single-role mode)..."
             Invoke-CodexRole -Role "implementer" -RolePrompt $implementerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
             Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
@@ -821,21 +916,21 @@ if ($SingleRole) {
             Publish-RoleBranch -RoleDir $testerDir
         }
         "security-checker" {
-            if (Test-Path $testerDir) { Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $securityCheckerDir }
+            if (Test-Path $implementerDir) { Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $securityCheckerDir }
             Write-Host "Running SecurityChecker (single-role mode)..."
             Invoke-CodexRole -Role "security-checker" -RolePrompt $securityCheckerPrompt -RoleDir $securityCheckerDir -OutputFile $securityCheckerOut
             Publish-HandoffComment -Role "security-checker" -OutputFile $securityCheckerOut
             Publish-RoleBranch -RoleDir $securityCheckerDir
         }
         "reviewer" {
-            if (Test-Path $securityCheckerDir) { Sync-WorktreeFromSource -SourceDir $securityCheckerDir -DestDir $reviewerDir }
+            if (Test-Path $implementerDir) { Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $reviewerDir }
             Write-Host "Running Reviewer (single-role mode)..."
             Invoke-CodexRole -Role "reviewer" -RolePrompt $reviewerPrompt -RoleDir $reviewerDir -OutputFile $reviewerOut
             Publish-HandoffComment -Role "reviewer" -OutputFile $reviewerOut
             Publish-RoleBranch -RoleDir $reviewerDir
         }
         "doc-checker" {
-            if (Test-Path $reviewerDir) { Sync-WorktreeFromSource -SourceDir $reviewerDir -DestDir $docCheckerDir }
+            if (Test-Path $implementerDir) { Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $docCheckerDir }
             Write-Host "Running DocChecker (single-role mode)..."
             Invoke-CodexRole -Role "doc-checker" -RolePrompt $docCheckerPrompt -RoleDir $docCheckerDir -OutputFile $docCheckerOut
             Publish-HandoffComment -Role "doc-checker" -OutputFile $docCheckerOut
@@ -843,7 +938,7 @@ if ($SingleRole) {
             Publish-PullRequest
         }
         default {
-            throw "Unknown role: '$SingleRole'. Valid roles: planner, implementer, tester, security-checker, reviewer, doc-checker"
+            throw "Unknown role: '$SingleRole'. Valid roles: planner, architect, implementer, tester, security-checker, reviewer, doc-checker"
         }
     }
 } else {
@@ -852,95 +947,122 @@ Write-Host "Running Planner..."
 Invoke-CodexRole -Role "planner" -RolePrompt $plannerPrompt -RoleDir $plannerDir -OutputFile $plannerOut
 Publish-HandoffComment -Role "planner" -OutputFile $plannerOut
 
-# Implementer → Tester → SecurityChecker loop: retry Implementer if Tester or SecurityChecker fails
-$implTesterIter = 0
-$innerLoopPassed = $false
-do {
-    $implTesterIter++
-    if ($implTesterIter -eq 1) {
-        Write-Host "Running Implementer..."
-        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
-    } else {
-        Write-Host "Running Implementer (retry $($implTesterIter - 1) - fixing tester/security failures)..."
-        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromTesterPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+# Architect -> Implementer -> Planner review -> Reviewer -> SecurityChecker -> Tester
+Write-Host "Running Architect..."
+Sync-WorktreeFromSource -SourceDir $plannerDir -DestDir $architectDir
+Invoke-CodexRole -Role "architect" -RolePrompt $architectPrompt -RoleDir $architectDir -OutputFile $architectOut
+Publish-HandoffComment -Role "architect" -OutputFile $architectOut
+Sync-WorktreeFromSource -SourceDir $architectDir -DestDir $implementerDir
+
+Write-Host "Running Implementer..."
+Invoke-CodexRole -Role "implementer" -RolePrompt $implementerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+
+$plannerReviewPassed = $false
+for ($plannerReviewIter = 1; $plannerReviewIter -le $MaxIterations; $plannerReviewIter++) {
+    Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $plannerDir
+    Write-Host "Running Planner Review (iteration $plannerReviewIter)..."
+    Invoke-CodexRole -Role "planner-review" -RolePrompt $plannerReviewPrompt -RoleDir $plannerDir -OutputFile $plannerReviewOut
+    Publish-HandoffComment -Role "planner-review" -OutputFile $plannerReviewOut
+    if (Test-AgentPass -OutputFile $plannerReviewOut -PassStatus "READY") {
+        $plannerReviewPassed = $true
+        Sync-WorktreeFromSource -SourceDir $plannerDir -DestDir $implementerDir
+        break
     }
-    Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
-    Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $testerDir
-
-    Write-Host "Running Tester (iteration $implTesterIter)..."
-    Invoke-CodexRole -Role "tester" -RolePrompt $testerPrompt -RoleDir $testerDir -OutputFile $testerOut
-    Publish-HandoffComment -Role "tester" -OutputFile $testerOut
-
-    $testerPassed = Test-AgentPass -OutputFile $testerOut -PassStatus "PASS"
-    if ($testerPassed) {
-        Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $securityCheckerDir
-
-        Write-Host "Running SecurityChecker (iteration $implTesterIter)..."
-        Invoke-CodexRole -Role "security-checker" -RolePrompt $securityCheckerPrompt -RoleDir $securityCheckerDir -OutputFile $securityCheckerOut
-        Publish-HandoffComment -Role "security-checker" -OutputFile $securityCheckerOut
-
-        $innerLoopPassed = Test-AgentPass -OutputFile $securityCheckerOut -PassStatus "PASS"
+    if ($plannerReviewIter -lt $MaxIterations) {
+        Sync-WorktreeFromSource -SourceDir $plannerDir -DestDir $implementerDir
+        Write-Host "Running Implementer (retry $plannerReviewIter - addressing planner review findings)..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromPlannerReviewPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
     }
-} while (-not $innerLoopPassed -and $implTesterIter -lt $MaxIterations)
-
-if (-not $innerLoopPassed) {
-    Write-Warning "Tester/SecurityChecker did not achieve STATUS: PASS after $MaxIterations iteration(s). Continuing pipeline with last known state."
+}
+if (-not $plannerReviewPassed) {
+    Write-Warning "Planner review did not achieve STATUS: READY after $MaxIterations iteration(s). Continuing with last known state."
 }
 
-# Reviewer loop: if Reviewer rejects, send back to Implementer → Tester → SecurityChecker → Reviewer
-$reviewIter = 0
-do {
-    $reviewIter++
-    if ($reviewIter -gt 1) {
-        Write-Host "Running Implementer (retry $($reviewIter - 1) - addressing reviewer findings)..."
-        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromReviewerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
-        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
-        Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $testerDir
-
-        Write-Host "Running Tester (re-run after implementer retry $($reviewIter - 1))..."
-        Invoke-CodexRole -Role "tester" -RolePrompt $testerPrompt -RoleDir $testerDir -OutputFile $testerOut
-        Publish-HandoffComment -Role "tester" -OutputFile $testerOut
-
-        if (-not (Test-AgentPass -OutputFile $testerOut -PassStatus "PASS")) {
-            Write-Warning "Tester did not pass after implementer retry $($reviewIter - 1). Breaking reviewer loop."
-            break
-        }
-        Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $securityCheckerDir
-
-        Write-Host "Running SecurityChecker (re-run after implementer retry $($reviewIter - 1))..."
-        Invoke-CodexRole -Role "security-checker" -RolePrompt $securityCheckerPrompt -RoleDir $securityCheckerDir -OutputFile $securityCheckerOut
-        Publish-HandoffComment -Role "security-checker" -OutputFile $securityCheckerOut
-
-        if (-not (Test-AgentPass -OutputFile $securityCheckerOut -PassStatus "PASS")) {
-            Write-Warning "SecurityChecker did not pass after implementer retry $($reviewIter - 1). Breaking reviewer loop."
-            break
-        }
-    }
-
-    Sync-WorktreeFromSource -SourceDir $securityCheckerDir -DestDir $reviewerDir
+$reviewerPassed = $false
+for ($reviewIter = 1; $reviewIter -le $MaxIterations; $reviewIter++) {
+    Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $reviewerDir
     Write-Host "Running Reviewer (iteration $reviewIter)..."
     Invoke-CodexRole -Role "reviewer" -RolePrompt $reviewerPrompt -RoleDir $reviewerDir -OutputFile $reviewerOut
     Publish-HandoffComment -Role "reviewer" -OutputFile $reviewerOut
-} while (-not (Test-AgentPass -OutputFile $reviewerOut -PassStatus "READY") -and $reviewIter -lt $MaxIterations)
+    if (Test-AgentPass -OutputFile $reviewerOut -PassStatus "READY") {
+        $reviewerPassed = $true
+        Sync-WorktreeFromSource -SourceDir $reviewerDir -DestDir $implementerDir
+        break
+    }
+    if ($reviewIter -lt $MaxIterations) {
+        Sync-WorktreeFromSource -SourceDir $reviewerDir -DestDir $implementerDir
+        Write-Host "Running Implementer (retry $reviewIter - addressing reviewer findings)..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromReviewerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+    }
+}
+if (-not $reviewerPassed) {
+    Write-Warning "Reviewer did not achieve STATUS: READY after $MaxIterations iteration(s). Continuing with last known state."
+}
 
-if (-not (Test-AgentPass -OutputFile $reviewerOut -PassStatus "READY")) {
-    Write-Warning "Reviewer did not achieve STATUS: READY after $MaxIterations iteration(s). Continuing to DocChecker with last known state."
+$securityPassed = $false
+for ($securityIter = 1; $securityIter -le $MaxIterations; $securityIter++) {
+    Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $securityCheckerDir
+    Write-Host "Running SecurityChecker (iteration $securityIter)..."
+    Invoke-CodexRole -Role "security-checker" -RolePrompt $securityCheckerPrompt -RoleDir $securityCheckerDir -OutputFile $securityCheckerOut
+    Publish-HandoffComment -Role "security-checker" -OutputFile $securityCheckerOut
+    if (Test-AgentPass -OutputFile $securityCheckerOut -PassStatus "PASS") {
+        $securityPassed = $true
+        Sync-WorktreeFromSource -SourceDir $securityCheckerDir -DestDir $implementerDir
+        break
+    }
+    if ($securityIter -lt $MaxIterations) {
+        Sync-WorktreeFromSource -SourceDir $securityCheckerDir -DestDir $implementerDir
+        Write-Host "Running Implementer (retry $securityIter - addressing security findings)..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromSecurityPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+    }
+}
+if (-not $securityPassed) {
+    Write-Warning "SecurityChecker did not achieve STATUS: PASS after $MaxIterations iteration(s). Continuing with last known state."
+}
+
+$testerPassed = $false
+for ($testerIter = 1; $testerIter -le $MaxIterations; $testerIter++) {
+    Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $testerDir
+    Write-Host "Running Tester (iteration $testerIter)..."
+    Invoke-CodexRole -Role "tester" -RolePrompt $testerPrompt -RoleDir $testerDir -OutputFile $testerOut
+    Publish-HandoffComment -Role "tester" -OutputFile $testerOut
+    if (Test-AgentPass -OutputFile $testerOut -PassStatus "PASS") {
+        $testerPassed = $true
+        Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $implementerDir
+        break
+    }
+    if ($testerIter -lt $MaxIterations) {
+        Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $implementerDir
+        Write-Host "Running Implementer (retry $testerIter - fixing tester findings)..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromTesterPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+    }
+}
+if (-not $testerPassed) {
+    Write-Warning "Tester did not achieve STATUS: PASS after $MaxIterations iteration(s). Continuing to DocChecker with last known state."
 }
 
 Write-Host "Running DocChecker..."
-Sync-WorktreeFromSource -SourceDir $reviewerDir -DestDir $docCheckerDir
+Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $docCheckerDir
 Invoke-CodexRole -Role "doc-checker" -RolePrompt $docCheckerPrompt -RoleDir $docCheckerDir -OutputFile $docCheckerOut
 Publish-HandoffComment -Role "doc-checker" -OutputFile $docCheckerOut
 Sync-WorktreeFromSource -SourceDir $docCheckerDir -DestDir $implementerDir
 
 Publish-PullRequest
 
+# Reviewer loop: if Reviewer rejects, send back to Implementer → Tester → SecurityChecker → Reviewer
 } # end else (full pipeline)
 
 Write-Host ""
 Write-Host "Completed multi-agent run for issue #$IssueNumber"
 Write-Host "Handoff directory: $HandoffDir"
 Write-Host "Planner:          $plannerOut"
+Write-Host "Architect:        $architectOut"
+Write-Host "Planner Review:   $plannerReviewOut"
 Write-Host "Implementer:      $implementerOut"
 Write-Host "Tester:           $testerOut"
 Write-Host "SecurityChecker:  $securityCheckerOut"
