@@ -840,14 +840,18 @@ function Publish-PullRequest {
             )
             if ($prResult.ExitCode -eq 0) {
                 Write-Host "PR created: $($prResult.StdOut)"
-                $mergeResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @("pr", "merge", "--auto", "--squash")
-                if ($mergeResult.ExitCode -ne 0) {
-                    throw "PR was created but auto-merge could not be enabled: $(Get-ProcessFailureDetails -Result $mergeResult)"
-                }
-                Write-Host "Auto-merge enabled."
             } else {
                 Write-Warning "PR creation failed (PR may already exist). Output: $(Get-ProcessFailureDetails -Result $prResult)"
             }
+
+            # Always target the implementer head branch explicitly; otherwise gh defaults to current branch (often main).
+            $mergeResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @(
+                "pr", "merge", $implBranch, "--auto", "--squash"
+            )
+            if ($mergeResult.ExitCode -ne 0) {
+                throw "Auto-merge could not be enabled for head branch '$implBranch': $(Get-ProcessFailureDetails -Result $mergeResult)"
+            }
+            Write-Host "Auto-merge enabled."
         }
     }
 }
