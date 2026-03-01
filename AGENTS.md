@@ -16,7 +16,7 @@ This repository supports autonomous multi-agent collaboration with strict qualit
 
 3. Tester
 - Input: implementer diff and acceptance criteria.
-- Output: tests and validation changes in `tests/`, CI fixes for test reliability.
+- Output: tests and validation changes in `tests/`, test reliability fixes.
 - File scope: do not modify public API unless required for testability and documented.
 
 4. SecurityChecker
@@ -26,7 +26,7 @@ This repository supports autonomous multi-agent collaboration with strict qualit
 - Outputs `AGENT_STATUS: {"status":"PASS","findings":0}` when no critical/high findings remain.
 
 5. Reviewer
-- Input: final diff and CI results, SecurityChecker report.
+- Input: final diff and validation results, SecurityChecker report.
 - Output: risk report, regression check, release notes fragment.
 - File scope: docs and small fixes only.
 - If blocking issues are found, control returns to the Implementer.
@@ -54,7 +54,6 @@ A task is done only if all are true:
 - Tests pass.
 - No unresolved critical or high severity security findings.
 - Acceptance criteria from issue are satisfied.
-- PR checklist is complete.
 
 ### Required Local Validation Commands
 
@@ -74,7 +73,8 @@ cmake -P scripts/check-format.cmake
 - Never share one working directory between two active coding agents.
 
 Use helper script:
-- `scripts/setup-agent-worktrees.ps1`
+- `scripts/setup-agent-worktrees.bat` (Windows)
+- `scripts/setup-agent-worktrees.sh` (macOS/Linux)
 
 ### Coordination Rules
 
@@ -84,9 +84,9 @@ Use helper script:
   2. Implementer → Tester → SecurityChecker loop: Implementer applies changes, Tester validates, SecurityChecker performs static analysis. If Tester reports `STATUS: FAIL` or SecurityChecker reports `STATUS: FAIL`, control returns to the Implementer for fixes; this repeats until both report `STATUS: PASS` or the iteration limit is reached. If the limit is exhausted, a warning is emitted and the pipeline continues with the last known state.
   3. Reviewer → Implementer → Tester → SecurityChecker loop: Reviewer checks the result. If Reviewer reports `STATUS: NOT READY`, control returns to the Implementer (with reviewer findings), then Tester reruns, then SecurityChecker reruns, then Reviewer reruns; this repeats until `STATUS: READY` or the iteration limit is reached. If the Tester or SecurityChecker fails during a retry, the reviewer loop is broken immediately and a warning is emitted. If the iteration limit is exhausted, a warning is emitted and the pipeline continues to DocChecker.
   4. DocChecker — verifies and updates documentation and CHANGELOG.md (runs once after the review loop passes).
-  5. Auto-merge — if `-PublishToGitHub` is set, the implementer branch is pushed and a pull request is created with auto-merge enabled (requires `gh` and a valid `GITHUB_TOKEN`).
+  5. Auto-merge — if `-PublishToGitHub` is set, the implementer branch is pushed and a pull request is created with auto-merge enabled (requires `gh auth login`).
 - After each agent completes, its changes are committed and merged into the next agent's worktree (worktree promotion) so every agent always sees the latest code.
-- If CI fails, ownership returns to the agent role that introduced the failing change.
+- If validation fails, ownership returns to the agent role that introduced the failing change.
 - If acceptance criteria are ambiguous, Planner must clarify before implementation.
 
 ### Structured Handoffs
@@ -104,5 +104,5 @@ AGENT_STATUS: {"status":"PASS","findings":N}
 ### Safety Rules
 
 - No force-push to protected branches.
-- No merge without green CI.
+- No merge without successful validation.
 - No direct commits to `main`.

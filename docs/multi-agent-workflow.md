@@ -10,14 +10,22 @@ Create an issue using:
 
 Every task must have measurable acceptance criteria.
 
-Add the `agent-run` label to the issue to trigger the pipeline automatically via GitHub Actions, or run it manually as described below.
-
 ## 2. Isolate agent work
+
+Prerequisites:
+- `pwsh` (PowerShell 7+) must be installed and available on `PATH`.
+- `git` must be installed.
+- `codex` must be installed.
+- `gh` is required only when using `-PublishToGitHub` or when reading issue context directly from GitHub.
 
 Create dedicated worktrees so agents do not conflict:
 
 ```powershell
-pwsh ./scripts/setup-agent-worktrees.ps1
+./scripts/setup-agent-worktrees.bat -IssueNumber 18
+```
+
+```sh
+sh ./scripts/setup-agent-worktrees.sh -IssueNumber 18
 ```
 
 This creates separate branches and directories for:
@@ -33,7 +41,11 @@ This creates separate branches and directories for:
 Use the orchestrator script to run the full pipeline end-to-end:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\run-multi-agent.ps1 -IssueNumber 18
+./scripts/run-multi-agent.bat -IssueNumber 18
+```
+
+```sh
+sh ./scripts/run-multi-agent.sh -IssueNumber 18
 ```
 
 Optional flags:
@@ -42,16 +54,6 @@ Optional flags:
 - `-Model <name>` to force a Codex model.
 - `-DryRun` to validate pipeline files/prompts without calling Codex.
 - `-MaxIterations <n>` to cap feedback cycles (default: 3).
-
-## 2.2 Automatic trigger via GitHub Actions
-
-Label any issue with `agent-run` to trigger `.github/workflows/multi-agent.yml` automatically. The workflow:
-1. Installs the OpenAI Codex CLI.
-2. Creates agent worktrees.
-3. Runs the full pipeline with `-PublishToGitHub`.
-4. Uploads all handoff files as workflow artifacts.
-
-Required repository secrets: `OPENAI_API_KEY`.
 
 ## 3. Pipeline
 
@@ -92,24 +94,7 @@ ctest --test-dir build -C Release --output-on-failure
 cmake -P scripts/check-format.cmake
 ```
 
-## 5. Enforce DoD in CI
-
-CI must pass before merge:
-- build and test matrix
-- format check
-- filename check
-
-## 6. Merge policy
+## 5. Optional Merge Policy
 
 - Use pull requests only.
-- Require green CI checks.
-- Require completed PR checklist.
 - Do not merge directly into `main`.
-
-## 7. Branch protection (GitHub settings)
-
-Configure branch protection for `main`:
-- Require a pull request before merging.
-- Require status checks to pass before merging.
-- Require branches to be up to date before merging.
-- Restrict who can push to matching branches (optional but recommended).
