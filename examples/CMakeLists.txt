@@ -91,23 +91,5 @@ add_custom_command(TARGET math_plugin POST_BUILD
 )
 
 if(HOTPLUGPP_BUILD_GUI_EXAMPLE)
-    if(WIN32)
-        add_executable(gui_host_app WIN32
-            gui_host_app.cpp
-        )
-
-        target_link_libraries(gui_host_app PRIVATE
-            hotplugpp
-        )
-
-        if(CMAKE_GENERATOR MATCHES "Visual Studio")
-            set_target_properties(gui_host_app PROPERTIES
-                VS_GLOBAL_BuildProjectReferences false
-            )
-        endif()
-    else()
-        message(STATUS
-            "HOTPLUGPP_BUILD_GUI_EXAMPLE is enabled, but gui_host_app is currently supported only on Windows. Skipping target."
-        )
-    endif()
+    add_subdirectory(gui_host_app)
 endif()

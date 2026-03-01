@@ -26,14 +26,16 @@ See [BUILD](https://github.com/fica99/HotPlugPP/wiki/BUILD) for detailed build i
 
 ## GUI Sample
 
-The repository now includes an optional `gui_host_app` example that provides a small non-terminal
-window for loading, unloading, and manually checking hot-reload status for a plugin.
+The repository includes an optional `gui_host_app` example under `examples/gui_host_app/` that
+provides a small non-terminal window for loading, unloading, and manually checking hot-reload
+status for a plugin.
 
 - Configure with `-DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON` to build the GUI sample.
-- The current implementation targets Windows only and is skipped with a CMake status message on
-  other platforms.
-- `gui_host_app` defaults to loading `sample_plugin.dll` from the same build output directory as
-  the executable.
+- The option defaults to `ON` on Windows and `OFF` on non-Windows platforms.
+- The current implementation is a self-contained Windows desktop sample and is skipped with a CMake
+  status message on other platforms.
+- `gui_host_app` defaults to loading `sample_plugin.dll` from the executable directory and falls
+  back to the parent `bin` directory when needed.
 
 Example Windows build and run flow:
 
@@ -113,6 +115,7 @@ See [API](https://github.com/fica99/HotPlugPP/wiki/API) for complete API documen
 
 The `examples/` directory contains:
 - `host_app.cpp` - Host application with hot-reload monitoring
+- `gui_host_app/` - Optional GUI host application with load/unload/check controls
 - `sample_plugin/` - Simple plugin demonstrating basic features
 - `math_plugin/` - Complex plugin with state management
 
