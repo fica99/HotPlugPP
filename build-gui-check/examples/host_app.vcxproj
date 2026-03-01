@@ -25,7 +25,6 @@
     <ProjectGuid>{635178CF-E977-3700-B6A0-A39D26FA79F5}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <BuildInParallel>false</BuildInParallel>
-    <BuildProjectReferences>false</BuildProjectReferences>
     <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
     <ProjectName>host_app</ProjectName>
