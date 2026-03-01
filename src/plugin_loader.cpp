@@ -1,6 +1,11 @@
 #include "hotplugpp/plugin_loader.hpp"
 
+#include <atomic>
+#include <filesystem>
 #include <iostream>
+#include <mutex>
+#include <thread>
+#include <unordered_map>
 #include <utility>
 
 #ifdef _WIN32
@@ -13,10 +18,157 @@
 
 namespace hotplugpp {
 
-PluginLoader::PluginLoader() = default;
+namespace {
+
+using Clock = std::chrono::steady_clock;
+namespace fs = std::filesystem;
+
+constexpr auto kWatchPollInterval = std::chrono::milliseconds(100);
+constexpr auto kReloadDebounceInterval = std::chrono::milliseconds(250);
+
+struct WatcherState {
+    std::atomic<bool> stopRequested{false};
+    std::atomic<bool> reloadPending{false};
+    std::thread watcherThread;
+    std::mutex mutex;
+    Clock::time_point lastEventTime{};
+};
+
+std::mutex g_watcherStatesMutex;
+std::unordered_map<const PluginLoader*, std::unique_ptr<WatcherState>> g_watcherStates;
+
+std::chrono::system_clock::time_point getFileModificationTimeForWatch(const std::string& path) {
+    struct stat statbuf;
+    if (stat(path.c_str(), &statbuf) == 0) {
+        return std::chrono::system_clock::from_time_t(statbuf.st_mtime);
+    }
+
+    return std::chrono::system_clock::time_point();
+}
+
+WatcherState& getWatcherState(const PluginLoader* loader) {
+    std::lock_guard<std::mutex> lock(g_watcherStatesMutex);
+    auto [it, inserted] = g_watcherStates.emplace(loader, std::make_unique<WatcherState>());
+    (void)inserted;
+    return *it->second;
+}
+
+WatcherState* findWatcherState(const PluginLoader* loader) {
+    std::lock_guard<std::mutex> lock(g_watcherStatesMutex);
+    const auto it = g_watcherStates.find(loader);
+    if (it == g_watcherStates.end()) {
+        return nullptr;
+    }
+
+    return it->second.get();
+}
+
+void notifyPluginChange(WatcherState& state) {
+    {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        state.lastEventTime = Clock::now();
+    }
+    state.reloadPending.store(true, std::memory_order_release);
+}
+
+void stopWatching(WatcherState& state) {
+    state.stopRequested.store(true, std::memory_order_release);
+    if (state.watcherThread.joinable()) {
+        state.watcherThread.join();
+    }
+
+    state.reloadPending.store(false, std::memory_order_release);
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.lastEventTime = Clock::time_point{};
+}
+
+bool startWatching(const PluginLoader* loader, const std::string& path) {
+    WatcherState& state = getWatcherState(loader);
+    stopWatching(state);
+
+    fs::path pluginPath(path);
+    std::error_code pathError;
+    fs::path pluginDirectory = pluginPath.has_parent_path() ? pluginPath.parent_path()
+                                                            : fs::current_path(pathError);
+    const bool directoryExists = !pluginDirectory.empty() && fs::exists(pluginDirectory, pathError);
+    if (pathError || !directoryExists) {
+        std::cerr << "Hot-reload watcher could not monitor path: " << path << std::endl;
+        return false;
+    }
+
+    state.stopRequested.store(false, std::memory_order_release);
+    state.watcherThread = std::thread(
+        [&state, watchedPath = pluginPath.lexically_normal().string()]() {
+            auto lastObserved = getFileModificationTimeForWatch(watchedPath);
+
+            while (!state.stopRequested.load(std::memory_order_acquire)) {
+                const auto currentObserved = getFileModificationTimeForWatch(watchedPath);
+                if (currentObserved > lastObserved) {
+                    lastObserved = currentObserved;
+                    notifyPluginChange(state);
+                } else if (currentObserved != std::chrono::system_clock::time_point()) {
+                    lastObserved = currentObserved;
+                }
+
+                std::this_thread::sleep_for(kWatchPollInterval);
+            }
+        });
+
+    return true;
+}
+
+void destroyWatcherState(const PluginLoader* loader) {
+    std::unique_ptr<WatcherState> state;
+    {
+        std::lock_guard<std::mutex> lock(g_watcherStatesMutex);
+        auto it = g_watcherStates.find(loader);
+        if (it == g_watcherStates.end()) {
+            return;
+        }
+
+        state = std::move(it->second);
+        g_watcherStates.erase(it);
+    }
+
+    stopWatching(*state);
+}
+
+bool consumeReloadSignal(const PluginLoader* loader,
+                         const std::chrono::system_clock::time_point& currentModTime,
+                         const std::chrono::system_clock::time_point& lastKnownModTime) {
+    WatcherState* state = findWatcherState(loader);
+    if (!state) {
+        return currentModTime > lastKnownModTime;
+    }
+
+    if (!state->reloadPending.load(std::memory_order_acquire)) {
+        return currentModTime > lastKnownModTime;
+    }
+
+    Clock::time_point lastEventTime;
+    {
+        std::lock_guard<std::mutex> lock(state->mutex);
+        lastEventTime = state->lastEventTime;
+    }
+
+    if (lastEventTime != Clock::time_point{} &&
+        (Clock::now() - lastEventTime) < kReloadDebounceInterval) {
+        return false;
+    }
+
+    state->reloadPending.store(false, std::memory_order_release);
+    return currentModTime > lastKnownModTime;
+}
+
+} // namespace
+
+PluginLoader::PluginLoader() {
+    getWatcherState(this);
+}
 
 PluginLoader::~PluginLoader() {
     unloadPlugin();
+    destroyWatcherState(this);
 }
 
 bool PluginLoader::loadPlugin(const std::string& path) {
@@ -71,6 +223,10 @@ bool PluginLoader::loadPlugin(const std::string& path) {
     m_pluginInfo.lastModified = getFileModificationTime(path);
     m_pluginInfo.isLoaded = true;
 
+    if (!startWatching(this, path)) {
+        std::cerr << "Continuing without file watcher for: " << path << std::endl;
+    }
+
     std::cout << "Plugin loaded successfully: " << plugin->getName() << " v"
               << plugin->getVersion().toString() << std::endl;
 
@@ -80,6 +236,10 @@ bool PluginLoader::loadPlugin(const std::string& path) {
 void PluginLoader::unloadPlugin() {
     if (!isLoaded()) {
         return;
+    }
+
+    if (WatcherState* state = findWatcherState(this)) {
+        stopWatching(*state);
     }
 
     // Call plugin cleanup
@@ -102,6 +262,7 @@ void PluginLoader::unloadPlugin() {
     m_pluginInfo.isLoaded = false;
     m_pluginInfo.createFunc = nullptr;
     m_pluginInfo.destroyFunc = nullptr;
+    m_pluginInfo.instance = nullptr;
 }
 
 bool PluginLoader::checkAndReload() {
@@ -110,9 +271,7 @@ bool PluginLoader::checkAndReload() {
     }
 
     auto currentModTime = getFileModificationTime(m_pluginInfo.path);
-
-    // Check if file has been modified
-    if (currentModTime > m_pluginInfo.lastModified) {
+    if (consumeReloadSignal(this, currentModTime, m_pluginInfo.lastModified)) {
         std::cout << "Plugin file modified, reloading..." << std::endl;
 
         std::string path = m_pluginInfo.path;
@@ -149,11 +308,7 @@ void PluginLoader::setReloadCallback(std::function<void()> callback) {
 
 std::chrono::system_clock::time_point
 PluginLoader::getFileModificationTime(const std::string& path) {
-    struct stat statbuf;
-    if (stat(path.c_str(), &statbuf) == 0) {
-        return std::chrono::system_clock::from_time_t(statbuf.st_mtime);
-    }
-    return std::chrono::system_clock::time_point();
+    return getFileModificationTimeForWatch(path);
 }
 
 LibraryHandle PluginLoader::loadLibrary(const std::string& path) {

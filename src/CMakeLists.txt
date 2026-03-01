@@ -3,9 +3,25 @@ add_library(hotplugpp STATIC
     plugin_loader.cpp
 )
 
+find_package(Threads REQUIRED)
+
 target_include_directories(hotplugpp PUBLIC
     ${CMAKE_SOURCE_DIR}/include
 )
+
+target_link_libraries(hotplugpp PUBLIC
+    Threads::Threads
+)
+
+if(HOTPLUGPP_HAS_EFSW)
+    if(TARGET efsw)
+        target_link_libraries(hotplugpp PRIVATE efsw)
+    elseif(TARGET efsw-static)
+        target_link_libraries(hotplugpp PRIVATE efsw-static)
+    endif()
+
+    target_compile_definitions(hotplugpp PRIVATE HOTPLUGPP_HAS_EFSW=1)
+endif()
 
 # Link platform-specific libraries
 if(UNIX AND NOT APPLE)

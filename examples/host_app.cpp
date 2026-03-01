@@ -13,7 +13,8 @@ void printUsage(const char* programName) {
     std::cout << "The host application will:" << std::endl;
     std::cout << "  1. Load the specified plugin" << std::endl;
     std::cout << "  2. Call the plugin's update() method in a loop" << std::endl;
-    std::cout << "  3. Monitor the plugin file for changes and hot-reload if modified" << std::endl;
+    std::cout << "  3. Watch the plugin file for changes and hot-reload when a change is detected"
+              << std::endl;
     std::cout << std::endl;
     std::cout << "Press Ctrl+C to exit" << std::endl;
 }
@@ -57,8 +58,8 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << std::endl;
-    std::cout << "Starting update loop (hot-reload monitoring enabled)..." << std::endl;
-    std::cout << "You can modify and recompile the plugin to see hot-reload in action!"
+    std::cout << "Starting update loop (background watcher enabled)..." << std::endl;
+    std::cout << "Rebuild the plugin and the watcher will queue a hot-reload for the next check."
               << std::endl;
     std::cout << std::endl;
 
@@ -72,7 +73,7 @@ int main(int argc, char* argv[]) {
     while (true) {
         auto frameStart = std::chrono::high_resolution_clock::now();
 
-        // Check for plugin reload every 60 frames (once per second at 60 FPS)
+        // Apply watcher-triggered reloads every 60 frames (once per second at 60 FPS)
         if (frameCount % 60 == 0) {
             loader.checkAndReload();
         }

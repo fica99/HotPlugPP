@@ -1,13 +1,24 @@
-# Fetch GoogleTest
-include(FetchContent)
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.14.0
-)
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+option(HOTPLUGPP_FETCH_GOOGLETEST "Fetch GoogleTest with FetchContent" OFF)
+
+find_package(GTest CONFIG QUIET)
+
+if(NOT GTest_FOUND AND HOTPLUGPP_FETCH_GOOGLETEST)
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.14.0
+        GIT_SHALLOW TRUE
+    )
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+endif()
+
+if(NOT GTest_FOUND AND NOT TARGET GTest::gtest_main)
+    message(WARNING "GoogleTest not available; skipping test targets.")
+    return()
+endif()
 
 # Include Google Test
 include(GoogleTest)

@@ -1,13 +1,28 @@
 #include "hotplugpp/plugin_loader.hpp"
 
-#include <gtest/gtest.h>
 #include <chrono>
-#include <fstream>
-#include <thread>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <gtest/gtest.h>
+#include <thread>
 
 namespace hotplugpp {
 namespace tests {
+
+namespace fs = std::filesystem;
+
+namespace {
+
+std::string getDefinitelyMissingPluginPath() {
+    return (fs::temp_directory_path() / "hotplugpp_missing_plugin" / "missing_plugin.bin").string();
+}
+
+std::string getInvalidPluginPath() {
+    return (fs::temp_directory_path() / "hotplugpp_invalid_plugin.bin").string();
+}
+
+} // namespace
 
 class PluginLoaderTest : public ::testing::Test {
   protected:
@@ -70,13 +85,13 @@ TEST_F(PluginLoaderTest, LoadPluginSetsPath) {
 
 TEST_F(PluginLoaderTest, LoadNonExistentPlugin) {
     PluginLoader loader;
-    EXPECT_FALSE(loader.loadPlugin("/nonexistent/path/plugin.so"));
+    EXPECT_FALSE(loader.loadPlugin(getDefinitelyMissingPluginPath()));
     EXPECT_FALSE(loader.isLoaded());
 }
 
 TEST_F(PluginLoaderTest, LoadInvalidFile) {
     // Create a temporary invalid file
-    std::string invalidPath = "/tmp/invalid_plugin.so";
+    std::string invalidPath = getInvalidPluginPath();
     std::ofstream file(invalidPath);
     file << "This is not a valid shared library";
     file.close();
@@ -269,7 +284,7 @@ TEST_F(PluginLoaderTest, LoadAfterFailedLoad) {
     PluginLoader loader;
     
     // First, try to load a non-existent plugin
-    EXPECT_FALSE(loader.loadPlugin("/nonexistent/plugin.so"));
+    EXPECT_FALSE(loader.loadPlugin(getDefinitelyMissingPluginPath()));
     EXPECT_FALSE(loader.isLoaded());
     
     // Then load a valid plugin

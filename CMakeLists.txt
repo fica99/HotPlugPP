@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(HotPlugPP VERSION 1.0.0 LANGUAGES CXX)
 
+include(FetchContent)
+
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,6 +22,29 @@ endif()
 
 # Enable position independent code for shared libraries
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+option(HOTPLUGPP_USE_EFSW "Use efsw when it is available" ON)
+option(HOTPLUGPP_FETCH_EFSW "Fetch efsw with FetchContent" OFF)
+
+set(HOTPLUGPP_HAS_EFSW OFF)
+
+if(HOTPLUGPP_USE_EFSW)
+    if(HOTPLUGPP_FETCH_EFSW)
+        FetchContent_Declare(
+            efsw
+            GIT_REPOSITORY https://github.com/SpartanJ/efsw.git
+            GIT_TAG 1.4.0
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(efsw)
+    endif()
+
+    if(TARGET efsw OR TARGET efsw-static)
+        set(HOTPLUGPP_HAS_EFSW ON)
+    else()
+        message(STATUS "efsw not available; using the built-in polling watcher fallback.")
+    endif()
+endif()
 
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
