@@ -69,12 +69,6 @@ target_link_libraries(host_app PRIVATE
     hotplugpp
 )
 
-if(CMAKE_GENERATOR MATCHES "Visual Studio")
-    set_target_properties(host_app PROPERTIES
-        VS_GLOBAL_BuildProjectReferences false
-    )
-endif()
-
 # Copy plugins to output directory after build
 add_custom_command(TARGET sample_plugin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
