@@ -809,6 +809,31 @@ function Publish-PullRequest {
 
     $implBranch = $branchResult.StdOut
     if ($implBranch -and $implBranch -ne "HEAD") {
+        $artifactPathspecs = @(
+            ":(glob)**/build/**",
+            ":(glob)**/build-*/**",
+            ":(glob)**/CMakeFiles/**",
+            ":(glob)**/CMakeCache.txt",
+            ":(glob)**/Testing/Temporary/**",
+            ":(glob)**/*.sln",
+            ":(glob)**/*.vcxproj",
+            ":(glob)**/*.vcxproj.filters",
+            ":(glob)**/*.tlog/**",
+            ":(glob)**/*.recipe",
+            ":(glob)**/*.lastbuildstate"
+        )
+
+        # Ensure final PR contains only source changes and no generated build artifacts.
+        $rmArtifactsResult = Invoke-GitCapture -ArgumentList (@("-C", $implementerDir, "rm", "-r", "-f", "--ignore-unmatch", "--") + $artifactPathspecs)
+        if ($rmArtifactsResult.ExitCode -ne 0) {
+            throw "Failed to prune tracked build artifacts from implementer worktree: $(Get-ProcessFailureDetails -Result $rmArtifactsResult)"
+        }
+
+        $cleanArtifactsResult = Invoke-GitCapture -ArgumentList (@("-C", $implementerDir, "clean", "-fd", "--") + $artifactPathspecs)
+        if ($cleanArtifactsResult.ExitCode -ne 0) {
+            throw "Failed to prune untracked build artifacts from implementer worktree: $(Get-ProcessFailureDetails -Result $cleanArtifactsResult)"
+        }
+
         $statusResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "status", "--porcelain")
         if ($statusResult.ExitCode -ne 0) {
             throw "Failed to inspect implementer worktree status: $(Get-ProcessFailureDetails -Result $statusResult)"
@@ -844,14 +869,7 @@ function Publish-PullRequest {
                 Write-Warning "PR creation failed (PR may already exist). Output: $(Get-ProcessFailureDetails -Result $prResult)"
             }
 
-            # Always target the implementer head branch explicitly; otherwise gh defaults to current branch (often main).
-            $mergeResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @(
-                "pr", "merge", $implBranch, "--auto", "--squash"
-            )
-            if ($mergeResult.ExitCode -ne 0) {
-                throw "Auto-merge could not be enabled for head branch '$implBranch': $(Get-ProcessFailureDetails -Result $mergeResult)"
-            }
-            Write-Host "Auto-merge enabled."
+            Write-Host "Auto-merge is disabled. PR left open for manual review and merge."
         }
     }
 }
