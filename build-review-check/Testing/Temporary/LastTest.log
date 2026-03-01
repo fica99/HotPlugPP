@@ -1,0 +1,20 @@
+Start testing: Mar 01 21:37 Central Europe Standard Time
+----------------------------------------------------------
+1/1 Testing: hotplugpp_tests
+1/1 Test: hotplugpp_tests
+Command: "C:/Program Files/CMake/bin/cmake.exe" "-DBUILD_DIR=C:/Users/ficac/Desktop/projects/my/HotPlugPP-reviewer-issue-18/build-review-check/tests" "-DTEST_TARGET=hotplugpp_tests" "-DTEST_EXECUTABLE=C:/Users/ficac/Desktop/projects/my/HotPlugPP-reviewer-issue-18/build-review-check/bin/Release/hotplugpp_tests.exe" "-DTEST_WORKING_DIR=C:/Users/ficac/Desktop/projects/my/HotPlugPP-reviewer-issue-18/build-review-check/bin/Release" "-DTEST_CONFIG=Release" "-P" "C:/Users/ficac/Desktop/projects/my/HotPlugPP-reviewer-issue-18/tests/support/run_built_test.cmake"
+Directory: C:/Users/ficac/Desktop/projects/my/HotPlugPP-reviewer-issue-18/build-review-check/tests
+"hotplugpp_tests" start time: Mar 01 21:37 Central Europe Standard Time
+Output:
+----------------------------------------------------------
+CMake Error: Not a file: C:/Users/ficac/Desktop/projects/my/HotPlugPP-reviewer-issue-18/tests/support/run_built_test.cmake
+CMake Error: Error processing file: C:/Users/ficac/Desktop/projects/my/HotPlugPP-reviewer-issue-18/tests/support/run_built_test.cmake
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Failed.
+"hotplugpp_tests" end time: Mar 01 21:37 Central Europe Standard Time
+"hotplugpp_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Mar 01 21:37 Central Europe Standard Time
