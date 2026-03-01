@@ -236,6 +236,12 @@ function Invoke-CodexRole {
         return
     }
 
+    $previousOutputExists = Test-Path $OutputFile
+    $previousOutputContent = $null
+    if ($previousOutputExists) {
+        $previousOutputContent = Get-Content -Raw $OutputFile
+    }
+
     if ($Provider -eq "github-copilot") {
         $promptContent = Get-Content -Raw $promptFile
         # Default model for GitHub Copilot provider; use -Model to override (codex provider uses its own default)
@@ -269,14 +275,33 @@ function Invoke-CodexRole {
             $codeArgs += @("-m", $Model)
         }
 
-        Get-Content -Raw $promptFile | & $script:CodexCommand @codeArgs
-        if ($LASTEXITCODE -ne 0) {
-            throw "Codex execution failed for role '$Role'."
+        $codexOutput = Get-Content -Raw $promptFile | & $script:CodexCommand @codeArgs 2>&1
+        $codexExitCode = $LASTEXITCODE
+        $codexOutputText = (($codexOutput | ForEach-Object { $_.ToString() }) -join "`n").Trim()
+
+        if ($codexExitCode -ne 0) {
+            $isUsageLimit = $codexOutputText -match "usage limit|try again at"
+            if ((Test-Path $OutputFile) -and ((Get-Item $OutputFile).Length -eq 0) -and $previousOutputExists) {
+                Set-Content -Path $OutputFile -Value $previousOutputContent -Encoding UTF8
+            }
+
+            if ($isUsageLimit) {
+                throw "Codex execution failed for role '$Role' due to usage limit. Details: $codexOutputText"
+            }
+
+            throw "Codex execution failed for role '$Role'. Details: $codexOutputText"
         }
     }
 
     if (-not (Test-Path $OutputFile)) {
         throw "Role '$Role' did not produce the expected handoff file: $OutputFile"
+    }
+
+    if ((Get-Item $OutputFile).Length -eq 0) {
+        if ($previousOutputExists) {
+            Set-Content -Path $OutputFile -Value $previousOutputContent -Encoding UTF8
+        }
+        throw "Role '$Role' produced an empty handoff file: $OutputFile"
     }
 }
 
