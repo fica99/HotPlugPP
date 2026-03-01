@@ -22,7 +22,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{D63AEC3E-8808-3353-8780-44BE610E4F40}</ProjectGuid>
+    <ProjectGuid>{4E597D76-0223-3FEC-9653-70FF6CF92DCF}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <BuildInParallel>false</BuildInParallel>
     <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
@@ -60,25 +60,25 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-gui-check\bin\Debug\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\build-gui-check\bin\Debug\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sample_plugin.dir\Debug\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">sample_plugin</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.dll</TargetExt>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-gui-check\bin\Release\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\build-gui-check\bin\Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">sample_plugin.dir\Release\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">sample_plugin</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.dll</TargetExt>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-gui-check\bin\MinSizeRel\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\build-gui-check\bin\MinSizeRel\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">sample_plugin.dir\MinSizeRel\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">sample_plugin</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.dll</TargetExt>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-gui-check\bin\RelWithDebInfo\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\build-gui-check\bin\RelWithDebInfo\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">sample_plugin.dir\RelWithDebInfo\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">sample_plugin</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.dll</TargetExt>
@@ -88,7 +88,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -111,10 +111,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;HOTPLUGPP_PLATFORM_WINDOWS;CMAKE_INTDIR=\"Debug\";sample_plugin_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -124,7 +124,7 @@
     <PostBuildEvent>
       <Message>Copying sample_plugin to bin directory</Message>
       <Command>setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/Debug/sample_plugin.dll C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/sample_plugin.dll
+"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/Debug/sample_plugin.dll C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/sample_plugin.dll
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -141,9 +141,9 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
-      <ImportLibrary>C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/lib/Debug/sample_plugin.lib</ImportLibrary>
+      <ImportLibrary>C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/lib/Debug/sample_plugin.lib</ImportLibrary>
       <LinkErrorReporting></LinkErrorReporting>
-      <ProgramDataBaseFile>C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/Debug/sample_plugin.pdb</ProgramDataBaseFile>
+      <ProgramDataBaseFile>C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/Debug/sample_plugin.pdb</ProgramDataBaseFile>
       <RandomizedBaseAddress></RandomizedBaseAddress>
       <SubSystem></SubSystem>
     </Link>
@@ -153,7 +153,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -177,10 +177,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;HOTPLUGPP_PLATFORM_WINDOWS;CMAKE_INTDIR=\"Release\";sample_plugin_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -190,7 +190,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message>Copying sample_plugin to bin directory</Message>
       <Command>setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/Release/sample_plugin.dll C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/sample_plugin.dll
+"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/Release/sample_plugin.dll C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/sample_plugin.dll
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -207,9 +207,9 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
-      <ImportLibrary>C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/lib/Release/sample_plugin.lib</ImportLibrary>
+      <ImportLibrary>C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/lib/Release/sample_plugin.lib</ImportLibrary>
       <LinkErrorReporting></LinkErrorReporting>
-      <ProgramDataBaseFile>C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/Release/sample_plugin.pdb</ProgramDataBaseFile>
+      <ProgramDataBaseFile>C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/Release/sample_plugin.pdb</ProgramDataBaseFile>
       <RandomizedBaseAddress></RandomizedBaseAddress>
       <SubSystem></SubSystem>
     </Link>
@@ -219,7 +219,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -243,10 +243,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;HOTPLUGPP_PLATFORM_WINDOWS;CMAKE_INTDIR=\"MinSizeRel\";sample_plugin_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -256,7 +256,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message>Copying sample_plugin to bin directory</Message>
       <Command>setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/MinSizeRel/sample_plugin.dll C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/sample_plugin.dll
+"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/MinSizeRel/sample_plugin.dll C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/sample_plugin.dll
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -273,9 +273,9 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
-      <ImportLibrary>C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/lib/MinSizeRel/sample_plugin.lib</ImportLibrary>
+      <ImportLibrary>C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/lib/MinSizeRel/sample_plugin.lib</ImportLibrary>
       <LinkErrorReporting></LinkErrorReporting>
-      <ProgramDataBaseFile>C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/MinSizeRel/sample_plugin.pdb</ProgramDataBaseFile>
+      <ProgramDataBaseFile>C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/MinSizeRel/sample_plugin.pdb</ProgramDataBaseFile>
       <RandomizedBaseAddress></RandomizedBaseAddress>
       <SubSystem></SubSystem>
     </Link>
@@ -285,7 +285,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -308,10 +308,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;HOTPLUGPP_PLATFORM_WINDOWS;CMAKE_INTDIR=\"RelWithDebInfo\";sample_plugin_EXPORTS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -321,7 +321,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     <PostBuildEvent>
       <Message>Copying sample_plugin to bin directory</Message>
       <Command>setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/RelWithDebInfo/sample_plugin.dll C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/sample_plugin.dll
+"C:\Program Files\CMake\bin\cmake.exe" -E copy C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/RelWithDebInfo/sample_plugin.dll C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/sample_plugin.dll
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -338,9 +338,9 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ImageHasSafeExceptionHandlers></ImageHasSafeExceptionHandlers>
-      <ImportLibrary>C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/lib/RelWithDebInfo/sample_plugin.lib</ImportLibrary>
+      <ImportLibrary>C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/lib/RelWithDebInfo/sample_plugin.lib</ImportLibrary>
       <LinkErrorReporting></LinkErrorReporting>
-      <ProgramDataBaseFile>C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-gui-check/bin/RelWithDebInfo/sample_plugin.pdb</ProgramDataBaseFile>
+      <ProgramDataBaseFile>C:/Users/ficac/Desktop/projects/my/HotPlugPP-tester-issue-19/build-gui-check/bin/RelWithDebInfo/sample_plugin.pdb</ProgramDataBaseFile>
       <RandomizedBaseAddress></RandomizedBaseAddress>
       <SubSystem></SubSystem>
     </Link>
@@ -349,7 +349,7 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\examples\sample_plugin\sample_plugin.cpp" />
+    <ClCompile Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\examples\sample_plugin\sample_plugin.cpp" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

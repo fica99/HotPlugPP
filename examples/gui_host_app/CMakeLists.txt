@@ -71,9 +71,3 @@ add_custom_command(TARGET gui_host_app POST_BUILD
         $<TARGET_FILE_DIR:gui_host_app>/$<TARGET_FILE_NAME:sample_plugin>
     COMMENT "Copying sample_plugin next to gui_host_app"
 )
-
-if(CMAKE_GENERATOR MATCHES "Visual Studio")
-    set_target_properties(gui_host_app PROPERTIES
-        VS_GLOBAL_BuildProjectReferences false
-    )
-endif()

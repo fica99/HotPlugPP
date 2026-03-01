@@ -1,15 +1,6 @@
-<<<<<<< HEAD
-if(NOT EXISTS "${GUI_HOST_APP_PATH}")
-    message(FATAL_ERROR "Missing gui_host_app binary: ${GUI_HOST_APP_PATH}")
-endif()
-
-if(NOT EXISTS "${SAMPLE_PLUGIN_PATH}")
-    message(FATAL_ERROR
-        "Missing sample_plugin next to gui_host_app: ${SAMPLE_PLUGIN_PATH}"
-    )
-endif()
-=======
 set(BUILD_DIR "@CMAKE_BINARY_DIR@")
+set(GUI_HOST_APP_NAME "gui_host_app@CMAKE_EXECUTABLE_SUFFIX@")
+set(SAMPLE_PLUGIN_NAME "@CMAKE_SHARED_LIBRARY_PREFIX@sample_plugin@CMAKE_SHARED_LIBRARY_SUFFIX@")
 
 function(require_any_path LABEL)
     foreach(CANDIDATE IN LISTS ARGN)
@@ -26,19 +17,18 @@ endfunction()
 
 require_any_path(
     "gui_host_app executable"
-    "${BUILD_DIR}/bin/Release/gui_host_app.exe"
-    "${BUILD_DIR}/bin/RelWithDebInfo/gui_host_app.exe"
-    "${BUILD_DIR}/bin/MinSizeRel/gui_host_app.exe"
-    "${BUILD_DIR}/bin/Debug/gui_host_app.exe"
-    "${BUILD_DIR}/bin/gui_host_app.exe"
+    "${BUILD_DIR}/bin/Release/${GUI_HOST_APP_NAME}"
+    "${BUILD_DIR}/bin/RelWithDebInfo/${GUI_HOST_APP_NAME}"
+    "${BUILD_DIR}/bin/MinSizeRel/${GUI_HOST_APP_NAME}"
+    "${BUILD_DIR}/bin/Debug/${GUI_HOST_APP_NAME}"
+    "${BUILD_DIR}/bin/${GUI_HOST_APP_NAME}"
 )
 
 require_any_path(
     "sample_plugin library"
-    "${BUILD_DIR}/bin/Release/sample_plugin.dll"
-    "${BUILD_DIR}/bin/RelWithDebInfo/sample_plugin.dll"
-    "${BUILD_DIR}/bin/MinSizeRel/sample_plugin.dll"
-    "${BUILD_DIR}/bin/Debug/sample_plugin.dll"
-    "${BUILD_DIR}/bin/sample_plugin.dll"
+    "${BUILD_DIR}/bin/Release/${SAMPLE_PLUGIN_NAME}"
+    "${BUILD_DIR}/bin/RelWithDebInfo/${SAMPLE_PLUGIN_NAME}"
+    "${BUILD_DIR}/bin/MinSizeRel/${SAMPLE_PLUGIN_NAME}"
+    "${BUILD_DIR}/bin/Debug/${SAMPLE_PLUGIN_NAME}"
+    "${BUILD_DIR}/bin/${SAMPLE_PLUGIN_NAME}"
 )
->>>>>>> 4ea5294ad7490880e860130d95531f99ed074870

@@ -1,30 +1,4 @@
-<<<<<<< HEAD
-set(gui_source "${PROJECT_SOURCE_DIR}/examples/gui_host_app.cpp")
-
-if(NOT EXISTS "${gui_source}")
-    message(FATAL_ERROR "Missing GUI example source file: ${gui_source}")
-endif()
-
-file(READ "${gui_source}" gui_source_content)
-
-set(required_snippets
-    "Load"
-    "Unload"
-    "Check/Reload"
-    "\"State:\""
-    "\"Name:\""
-    "\"Version:\""
-    "Plugin loaded successfully."
-    "Plugin unloaded."
-)
-
-foreach(required_snippet IN LISTS required_snippets)
-    string(FIND "${gui_source_content}" "${required_snippet}" snippet_index)
-    if(snippet_index EQUAL -1)
-        message(FATAL_ERROR
-            "GUI example source is missing required contract text: ${required_snippet}"
-=======
-set(GUI_SOURCE_FILE "@CMAKE_SOURCE_DIR@/examples/gui_host_app.cpp")
+set(GUI_SOURCE_FILE "@CMAKE_SOURCE_DIR@/examples/gui_host_app/main.cpp")
 
 if(NOT EXISTS "${GUI_SOURCE_FILE}")
     message(FATAL_ERROR "Missing GUI example source file: ${GUI_SOURCE_FILE}")
@@ -33,20 +7,23 @@ endif()
 file(READ "${GUI_SOURCE_FILE}" GUI_SOURCE_CONTENT)
 
 foreach(REQUIRED_SNIPPET
-    "loadPlugin("
-    "unloadPlugin("
-    "checkAndReload("
-    "getName()"
-    "getVersion().toString()"
+    "void loadPlugin()"
+    "void unloadPlugin()"
+    "void checkAndReload()"
+    "loader.loadPlugin(path)"
+    "loader.unloadPlugin()"
+    "loader.checkAndReload()"
     "\"Load\""
     "\"Unload\""
-    "\"Check/Reload\""
+    "\"Check / Reload\""
+    "\"State: %s\""
+    "\"Name: %s\""
+    "\"Version: %s\""
 )
     string(FIND "${GUI_SOURCE_CONTENT}" "${REQUIRED_SNIPPET}" MATCH_INDEX)
     if(MATCH_INDEX EQUAL -1)
         message(FATAL_ERROR
             "GUI example source is missing required snippet: ${REQUIRED_SNIPPET}"
->>>>>>> 4ea5294ad7490880e860130d95531f99ed074870
         )
     endif()
 endforeach()

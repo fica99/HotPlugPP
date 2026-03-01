@@ -25,7 +25,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{55366A74-AB9A-31E2-AB54-CE64181B0871}</ProjectGuid>
+    <ProjectGuid>{7974E2E2-5359-3A11-9B0D-AAD505907AB0}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <BuildInParallel>false</BuildInParallel>
     <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
@@ -70,7 +70,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -80,7 +80,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -90,7 +90,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -100,7 +100,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <Midl>
-      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -112,20 +112,20 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-gui-check\examples\host_app.vcxproj">
-      <Project>{635178CF-E977-3700-B6A0-A39D26FA79F5}</Project>
+    <ProjectReference Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\build-gui-check\examples\host_app.vcxproj">
+      <Project>{917982F2-DAB1-3327-9D14-015CDF1703B5}</Project>
       <Name>host_app</Name>
     </ProjectReference>
-    <ProjectReference Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-gui-check\src\hotplugpp.vcxproj">
-      <Project>{CEBB6792-32AA-3BB4-AD23-43ECCE81D260}</Project>
+    <ProjectReference Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\build-gui-check\src\hotplugpp.vcxproj">
+      <Project>{5E526723-081A-3685-8ECB-8358D125194E}</Project>
       <Name>hotplugpp</Name>
     </ProjectReference>
-    <ProjectReference Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-gui-check\examples\math_plugin.vcxproj">
-      <Project>{A8DF965A-CEE1-30BD-808A-ACB8C4678E20}</Project>
+    <ProjectReference Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\build-gui-check\examples\math_plugin.vcxproj">
+      <Project>{5E3315AA-056D-39FD-8898-48667F0966F3}</Project>
       <Name>math_plugin</Name>
     </ProjectReference>
-    <ProjectReference Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-gui-check\examples\sample_plugin.vcxproj">
-      <Project>{D63AEC3E-8808-3353-8780-44BE610E4F40}</Project>
+    <ProjectReference Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-tester-issue-19\build-gui-check\examples\sample_plugin.vcxproj">
+      <Project>{4E597D76-0223-3FEC-9653-70FF6CF92DCF}</Project>
       <Name>sample_plugin</Name>
     </ProjectReference>
   </ItemGroup>

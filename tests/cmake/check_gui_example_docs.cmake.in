@@ -1,24 +1,3 @@
-<<<<<<< HEAD
-set(readme_path "${PROJECT_SOURCE_DIR}/README.md")
-
-if(NOT EXISTS "${readme_path}")
-    message(FATAL_ERROR "Missing README file: ${readme_path}")
-endif()
-
-file(READ "${readme_path}" readme_content)
-
-set(required_snippets
-    "HOTPLUGPP_BUILD_GUI_EXAMPLE"
-    "gui_host_app"
-    "non-terminal"
-)
-
-foreach(required_snippet IN LISTS required_snippets)
-    string(FIND "${readme_content}" "${required_snippet}" snippet_index)
-    if(snippet_index EQUAL -1)
-        message(FATAL_ERROR
-            "README is missing required GUI example documentation text: ${required_snippet}"
-=======
 set(README_FILE "@CMAKE_SOURCE_DIR@/README.md")
 
 if(NOT EXISTS "${README_FILE}")
@@ -30,14 +9,15 @@ file(READ "${README_FILE}" README_CONTENT)
 foreach(REQUIRED_SNIPPET
     "## GUI Sample"
     "HOTPLUGPP_BUILD_GUI_EXAMPLE"
+    "HOTPLUGPP_IMGUI_DIR"
     "gui_host_app"
-    "cmake -S . -B build -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON"
+    "non-terminal"
+    "cmake --build build --config Release --parallel"
 )
     string(FIND "${README_CONTENT}" "${REQUIRED_SNIPPET}" MATCH_INDEX)
     if(MATCH_INDEX EQUAL -1)
         message(FATAL_ERROR
             "README is missing required GUI documentation snippet: ${REQUIRED_SNIPPET}"
->>>>>>> 4ea5294ad7490880e860130d95531f99ed074870
         )
     endif()
 endforeach()

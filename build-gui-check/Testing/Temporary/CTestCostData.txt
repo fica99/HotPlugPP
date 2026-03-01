@@ -1,0 +1,3 @@
+gui_example_source_contract 1 0.0225263
+gui_example_docs_contract 1 0.0213505
+---
