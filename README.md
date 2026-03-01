@@ -18,7 +18,7 @@ A lightweight, cross-platform plugin system in modern C++ with support for runti
 cmake -S . -B build
 
 # Build the host example and sample plugin explicitly
-cmake --build build --config Release --target host_app sample_plugin
+cmake --build build --config Release --target build_host_app build_sample_plugin
 
 # Run example
 ./build/bin/host_app ./build/bin/libsample_plugin.so
@@ -123,12 +123,12 @@ The `examples/` directory contains:
 Run example with hot-reload:
 ```bash
 # Terminal 1: Build and run the host
-cmake --build build --config Release --target host_app sample_plugin
+cmake --build build --config Release --target build_host_app build_sample_plugin
 ./build/bin/host_app ./build/bin/libsample_plugin.so
 
 # Terminal 2: Modify and rebuild
 # Edit examples/sample_plugin/sample_plugin.cpp
-cmake --build build --config Release --target sample_plugin
+cmake --build build --config Release --target build_sample_plugin
 # The watcher will queue one reload and the host loop will apply it on the next check.
 ```
 

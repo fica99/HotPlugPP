@@ -103,10 +103,25 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 add_subdirectory(src)
 add_subdirectory(examples EXCLUDE_FROM_ALL)
 
+# Convenience wrapper targets so explicit example builds work consistently
+# across generators (including Visual Studio).
+if(TARGET host_app)
+    add_custom_target(build_host_app DEPENDS host_app)
+endif()
+if(TARGET sample_plugin)
+    add_custom_target(build_sample_plugin DEPENDS sample_plugin)
+endif()
+if(TARGET math_plugin)
+    add_custom_target(build_math_plugin DEPENDS math_plugin)
+endif()
+
 # Testing
 option(HOTPLUGPP_BUILD_TESTS "Build tests" ON)
 
 if(HOTPLUGPP_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests EXCLUDE_FROM_ALL)
+    if(TARGET hotplugpp_tests)
+        add_custom_target(build_hotplugpp_tests DEPENDS hotplugpp_tests)
+    endif()
 endif()

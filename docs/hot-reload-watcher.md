@@ -40,7 +40,7 @@ cmake -S . -B build -DHOTPLUGPP_USE_EFSW=ON -DHOTPLUGPP_USE_BUNDLED_EFSW_STUB=OF
 
 ```bash
 cmake -S . -B build
-cmake --build build --config Release --target host_app sample_plugin
+cmake --build build --config Release --target build_host_app build_sample_plugin
 ./build/bin/host_app ./build/bin/libsample_plugin.so
 ```
 

@@ -48,7 +48,7 @@ cd HotPlugPP
 cmake -S . -B build
 
 # Build the example targets you want to run
-cmake --build build --config Release --target host_app sample_plugin
+cmake --build build --config Release --target build_host_app build_sample_plugin
 
 # Test your changes
 ./build/bin/host_app ./build/bin/libsample_plugin.so
@@ -175,15 +175,15 @@ private:
 cmake -S . -B build
 
 # Build and run the consolidated test target
-cmake --build build --config Release --target hotplugpp_tests
+cmake --build build --config Release --target build_hotplugpp_tests
 ctest --test-dir build -C Release --output-on-failure
 
 # Test sample plugin
-cmake --build build --config Release --target host_app sample_plugin
+cmake --build build --config Release --target build_host_app build_sample_plugin
 ./build/bin/host_app ./build/bin/libsample_plugin.so
 
 # Test math plugin
-cmake --build build --config Release --target host_app math_plugin
+cmake --build build --config Release --target build_host_app build_math_plugin
 ./build/bin/host_app ./build/bin/libmath_plugin.so
 
 # Test hot-reload
