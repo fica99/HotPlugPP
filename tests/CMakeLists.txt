@@ -1,5 +1,7 @@
 option(HOTPLUGPP_FETCH_GOOGLETEST "Fetch GoogleTest with FetchContent" OFF)
 
+set(HOTPLUGPP_TEST_SUPPORT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/support")
+
 find_package(GTest CONFIG QUIET)
 
 if(NOT GTest_FOUND AND HOTPLUGPP_FETCH_GOOGLETEST)
@@ -10,30 +12,8 @@ if(NOT GTest_FOUND AND HOTPLUGPP_FETCH_GOOGLETEST)
         GIT_TAG v1.14.0
         GIT_SHALLOW TRUE
     )
-    # For Windows: Prevent overriding the parent project's compiler/linker settings
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
-endif()
-
-if(NOT GTest_FOUND AND NOT TARGET GTest::gtest_main)
-    message(STATUS "GoogleTest not available; using the bundled test shim.")
-
-    add_library(hotplugpp_test_main STATIC
-        support/test_main.cpp
-    )
-    set_target_properties(hotplugpp_test_main PROPERTIES
-        EXCLUDE_FROM_ALL ON
-    )
-    target_include_directories(hotplugpp_test_main PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/support
-    )
-
-    add_library(GTest::gtest_main ALIAS hotplugpp_test_main)
-    set(HOTPLUGPP_USE_BUNDLED_GTEST_SHIM ON)
-endif()
-
-if(NOT HOTPLUGPP_USE_BUNDLED_GTEST_SHIM)
-    include(GoogleTest)
 endif()
 
 # Platform-specific shared library prefix and suffix
@@ -46,6 +26,20 @@ elseif(APPLE)
 else()
     set(SHARED_LIB_PREFIX "lib")
     set(SHARED_LIB_SUFFIX ".so")
+endif()
+
+set(HOTPLUGPP_TEST_FRAMEWORK_TARGET "")
+set(HOTPLUGPP_TEST_MAIN_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/support/test_main.cpp")
+set(HOTPLUGPP_TEST_INCLUDE_DIRS "")
+
+if(TARGET GTest::gtest)
+    set(HOTPLUGPP_TEST_FRAMEWORK_TARGET GTest::gtest)
+elseif(TARGET GTest::gtest_main)
+    set(HOTPLUGPP_TEST_FRAMEWORK_TARGET GTest::gtest_main)
+    set(HOTPLUGPP_TEST_MAIN_SOURCE "")
+else()
+    message(STATUS "GoogleTest not available; using the bundled test shim.")
+    list(APPEND HOTPLUGPP_TEST_INCLUDE_DIRS ${HOTPLUGPP_TEST_SUPPORT_DIR})
 endif()
 
 # Test plugin for integration tests
@@ -63,7 +57,6 @@ set_target_properties(test_plugin PROPERTIES
     SUFFIX "${SHARED_LIB_SUFFIX}"
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
-    # For multi-config generators (MSVC, Xcode), ensure DLLs go to the same location
     LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/tests
     LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/tests
     LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/tests
@@ -89,7 +82,6 @@ set_target_properties(failing_plugin PROPERTIES
     SUFFIX "${SHARED_LIB_SUFFIX}"
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
-    # For multi-config generators (MSVC, Xcode), ensure DLLs go to the same location
     LIBRARY_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/tests
     LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/tests
     LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO ${CMAKE_BINARY_DIR}/tests
@@ -108,13 +100,23 @@ add_executable(hotplugpp_tests
     i_plugin_tests.cpp
     integration_tests.cpp
 )
+if(HOTPLUGPP_TEST_MAIN_SOURCE)
+    target_sources(hotplugpp_tests PRIVATE ${HOTPLUGPP_TEST_MAIN_SOURCE})
+endif()
 set_target_properties(hotplugpp_tests PROPERTIES
     EXCLUDE_FROM_ALL ON
 )
+if(HOTPLUGPP_TEST_INCLUDE_DIRS)
+    target_include_directories(hotplugpp_tests PRIVATE
+        ${HOTPLUGPP_TEST_INCLUDE_DIRS}
+    )
+endif()
 target_link_libraries(hotplugpp_tests PRIVATE
-    GTest::gtest_main
     hotplugpp
 )
+if(HOTPLUGPP_TEST_FRAMEWORK_TARGET)
+    target_link_libraries(hotplugpp_tests PRIVATE ${HOTPLUGPP_TEST_FRAMEWORK_TARGET})
+endif()
 target_compile_definitions(hotplugpp_tests PRIVATE
     TEST_PLUGIN_DIR="${CMAKE_BINARY_DIR}/tests"
     SHARED_LIB_PREFIX="${SHARED_LIB_PREFIX}"
@@ -125,9 +127,10 @@ add_dependencies(hotplugpp_tests test_plugin failing_plugin)
 add_test(
     NAME hotplugpp_tests
     COMMAND ${CMAKE_COMMAND}
-        -DBINARY_DIR=${CMAKE_BINARY_DIR}
+        -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
         -DTEST_TARGET=hotplugpp_tests
         -DTEST_EXECUTABLE=$<TARGET_FILE:hotplugpp_tests>
+        -DTEST_WORKING_DIR=$<TARGET_FILE_DIR:hotplugpp_tests>
         -DTEST_CONFIG=$<CONFIG>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/support/run_built_test.cmake
 )

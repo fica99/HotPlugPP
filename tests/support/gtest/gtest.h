@@ -50,16 +50,6 @@ inline std::vector<TestCase>& registry() {
     return tests;
 }
 
-inline int& failedTestCount() {
-    static int count = 0;
-    return count;
-}
-
-inline int& totalTestCount() {
-    static int count = 0;
-    return count;
-}
-
 inline void appendMessage(std::ostringstream&) {}
 
 template <typename T, typename... Rest>
@@ -221,7 +211,6 @@ inline int runAllTests() {
     int failedTests = 0;
 
     for (const TestCase& testCase : registry()) {
-        ++totalTestCount();
         TestResult result;
         g_currentResult = &result;
 
@@ -241,17 +230,18 @@ inline int runAllTests() {
         }
     }
 
-    failedTestCount() = failedTests;
     return failedTests;
 }
 
 } // namespace detail
 
-inline int InitGoogleTest(int*, char**) { return 0; }
+inline void InitGoogleTest(int*, char**) {}
 
-inline int RUN_ALL_TESTS() { return detail::runAllTests(); }
+inline int RunAllTests() { return detail::runAllTests(); }
 
 } // namespace testing
+
+#define RUN_ALL_TESTS() ::testing::RunAllTests()
 
 #define TEST(test_suite_name, test_name)                                                           \
     class test_suite_name##_##test_name##_Test : public ::testing::Test {                          \
