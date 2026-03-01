@@ -1,5 +1,6 @@
 # Core library
 add_library(hotplugpp STATIC
+    plugin_watcher.cpp
     plugin_loader.cpp
 )
 

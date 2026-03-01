@@ -17,6 +17,9 @@ typedef void* LibraryHandle;
 #endif
 
 namespace hotplugpp {
+namespace detail {
+class PluginWatcher;
+}
 
 /**
  * @brief Plugin metadata and handle
@@ -90,6 +93,7 @@ class PluginLoader {
   private:
     PluginInfo m_pluginInfo;
     std::function<void()> m_reloadCallback;
+    std::unique_ptr<detail::PluginWatcher> m_watcher;
 
     /**
      * @brief Get the last modification time of a file
