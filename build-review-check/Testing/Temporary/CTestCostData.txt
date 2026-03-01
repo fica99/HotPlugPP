@@ -1,3 +1,0 @@
-hotplugpp_tests 0 0
----
-hotplugpp_tests
