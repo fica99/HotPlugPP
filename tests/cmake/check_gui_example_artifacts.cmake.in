@@ -1,0 +1,9 @@
+if(NOT EXISTS "${GUI_HOST_APP_PATH}")
+    message(FATAL_ERROR "Missing gui_host_app binary: ${GUI_HOST_APP_PATH}")
+endif()
+
+if(NOT EXISTS "${SAMPLE_PLUGIN_PATH}")
+    message(FATAL_ERROR
+        "Missing sample_plugin next to gui_host_app: ${SAMPLE_PLUGIN_PATH}"
+    )
+endif()

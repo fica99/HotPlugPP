@@ -1,0 +1,27 @@
+set(gui_source "${PROJECT_SOURCE_DIR}/examples/gui_host_app.cpp")
+
+if(NOT EXISTS "${gui_source}")
+    message(FATAL_ERROR "Missing GUI example source file: ${gui_source}")
+endif()
+
+file(READ "${gui_source}" gui_source_content)
+
+set(required_snippets
+    "Load"
+    "Unload"
+    "Check/Reload"
+    "\"State:\""
+    "\"Name:\""
+    "\"Version:\""
+    "Plugin loaded successfully."
+    "Plugin unloaded."
+)
+
+foreach(required_snippet IN LISTS required_snippets)
+    string(FIND "${gui_source_content}" "${required_snippet}" snippet_index)
+    if(snippet_index EQUAL -1)
+        message(FATAL_ERROR
+            "GUI example source is missing required contract text: ${required_snippet}"
+        )
+    endif()
+endforeach()
