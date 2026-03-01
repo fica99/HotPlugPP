@@ -1,0 +1,21 @@
+set(README_FILE "@CMAKE_SOURCE_DIR@/README.md")
+
+if(NOT EXISTS "${README_FILE}")
+    message(FATAL_ERROR "Missing README file: ${README_FILE}")
+endif()
+
+file(READ "${README_FILE}" README_CONTENT)
+
+foreach(REQUIRED_SNIPPET
+    "## GUI Sample"
+    "HOTPLUGPP_BUILD_GUI_EXAMPLE"
+    "gui_host_app"
+    "cmake -S . -B build -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON"
+)
+    string(FIND "${README_CONTENT}" "${REQUIRED_SNIPPET}" MATCH_INDEX)
+    if(MATCH_INDEX EQUAL -1)
+        message(FATAL_ERROR
+            "README is missing required GUI documentation snippet: ${REQUIRED_SNIPPET}"
+        )
+    endif()
+endforeach()

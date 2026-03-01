@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.15)
+
+if(CMAKE_GENERATOR MATCHES "Visual Studio")
+    set(CMAKE_SUPPRESS_REGENERATION ON)
+    set(CMAKE_VS_GLOBALS "BuildInParallel=false")
+endif()
+
 project(HotPlugPP VERSION 1.0.0 LANGUAGES CXX)
 
 # Set C++ standard

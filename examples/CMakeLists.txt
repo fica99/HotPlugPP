@@ -69,6 +69,12 @@ target_link_libraries(host_app PRIVATE
     hotplugpp
 )
 
+if(CMAKE_GENERATOR MATCHES "Visual Studio")
+    set_target_properties(host_app PROPERTIES
+        VS_GLOBAL_BuildProjectReferences false
+    )
+endif()
+
 # Copy plugins to output directory after build
 add_custom_command(TARGET sample_plugin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
@@ -93,6 +99,12 @@ if(HOTPLUGPP_BUILD_GUI_EXAMPLE)
         target_link_libraries(gui_host_app PRIVATE
             hotplugpp
         )
+
+        if(CMAKE_GENERATOR MATCHES "Visual Studio")
+            set_target_properties(gui_host_app PROPERTIES
+                VS_GLOBAL_BuildProjectReferences false
+            )
+        endif()
     else()
         message(STATUS
             "HOTPLUGPP_BUILD_GUI_EXAMPLE is enabled, but gui_host_app is currently supported only on Windows. Skipping target."
