@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 if(NOT EXISTS "${GUI_HOST_APP_PATH}")
     message(FATAL_ERROR "Missing gui_host_app binary: ${GUI_HOST_APP_PATH}")
 endif()
@@ -7,3 +8,37 @@ if(NOT EXISTS "${SAMPLE_PLUGIN_PATH}")
         "Missing sample_plugin next to gui_host_app: ${SAMPLE_PLUGIN_PATH}"
     )
 endif()
+=======
+set(BUILD_DIR "@CMAKE_BINARY_DIR@")
+
+function(require_any_path LABEL)
+    foreach(CANDIDATE IN LISTS ARGN)
+        if(EXISTS "${CANDIDATE}")
+            return()
+        endif()
+    endforeach()
+
+    string(REPLACE ";" "\n  " FORMATTED_CANDIDATES "${ARGN}")
+    message(FATAL_ERROR
+        "${LABEL} was not found in any expected location:\n  ${FORMATTED_CANDIDATES}"
+    )
+endfunction()
+
+require_any_path(
+    "gui_host_app executable"
+    "${BUILD_DIR}/bin/Release/gui_host_app.exe"
+    "${BUILD_DIR}/bin/RelWithDebInfo/gui_host_app.exe"
+    "${BUILD_DIR}/bin/MinSizeRel/gui_host_app.exe"
+    "${BUILD_DIR}/bin/Debug/gui_host_app.exe"
+    "${BUILD_DIR}/bin/gui_host_app.exe"
+)
+
+require_any_path(
+    "sample_plugin library"
+    "${BUILD_DIR}/bin/Release/sample_plugin.dll"
+    "${BUILD_DIR}/bin/RelWithDebInfo/sample_plugin.dll"
+    "${BUILD_DIR}/bin/MinSizeRel/sample_plugin.dll"
+    "${BUILD_DIR}/bin/Debug/sample_plugin.dll"
+    "${BUILD_DIR}/bin/sample_plugin.dll"
+)
+>>>>>>> 4ea5294ad7490880e860130d95531f99ed074870

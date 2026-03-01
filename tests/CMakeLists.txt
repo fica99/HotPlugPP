@@ -10,6 +10,7 @@ else()
     set(SHARED_LIB_SUFFIX ".so")
 endif()
 
+<<<<<<< HEAD
 set(TESTS_CMAKE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 add_test(
@@ -45,6 +46,46 @@ endif()
 option(HOTPLUGPP_FETCH_GTEST "Fetch GoogleTest when it is not already installed" OFF)
 
 find_package(GTest QUIET)
+=======
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cmake")
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/check_gui_example_source.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_source.cmake"
+    @ONLY
+)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/check_gui_example_docs.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_docs.cmake"
+    @ONLY
+)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/check_gui_example_artifacts.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_artifacts.cmake"
+    @ONLY
+)
+
+add_test(
+    NAME gui_example_source_contract
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_source.cmake"
+)
+
+add_test(
+    NAME gui_example_docs_contract
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_docs.cmake"
+)
+
+if(TARGET gui_host_app AND TARGET sample_plugin)
+    add_test(
+        NAME gui_example_artifacts
+        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_artifacts.cmake"
+    )
+endif()
+
+option(HOTPLUGPP_FETCH_GTEST "Download GoogleTest during configure when it is not installed" OFF)
+
+find_package(GTest CONFIG QUIET)
+>>>>>>> 4ea5294ad7490880e860130d95531f99ed074870
 
 if(NOT GTest_FOUND AND HOTPLUGPP_FETCH_GTEST)
     include(FetchContent)
@@ -58,8 +99,12 @@ if(NOT GTest_FOUND AND HOTPLUGPP_FETCH_GTEST)
     FetchContent_MakeAvailable(googletest)
 endif()
 
+<<<<<<< HEAD
 if(GTest_FOUND OR TARGET GTest::gtest_main)
     # Include Google Test
+=======
+if(TARGET GTest::gtest_main)
+>>>>>>> 4ea5294ad7490880e860130d95531f99ed074870
     include(GoogleTest)
 
     # Test plugin for integration tests
@@ -116,6 +161,14 @@ if(GTest_FOUND OR TARGET GTest::gtest_main)
         GTest::gtest_main
         hotplugpp
     )
+<<<<<<< HEAD
+=======
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+        set_target_properties(version_tests PROPERTIES
+            VS_GLOBAL_BuildProjectReferences false
+        )
+    endif()
+>>>>>>> 4ea5294ad7490880e860130d95531f99ed074870
     gtest_discover_tests(version_tests)
 
     # PluginLoader tests
@@ -132,6 +185,14 @@ if(GTest_FOUND OR TARGET GTest::gtest_main)
         SHARED_LIB_SUFFIX="${SHARED_LIB_SUFFIX}"
     )
     add_dependencies(plugin_loader_tests test_plugin failing_plugin)
+<<<<<<< HEAD
+=======
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+        set_target_properties(plugin_loader_tests PROPERTIES
+            VS_GLOBAL_BuildProjectReferences false
+        )
+    endif()
+>>>>>>> 4ea5294ad7490880e860130d95531f99ed074870
     gtest_discover_tests(plugin_loader_tests)
 
     # IPlugin interface tests
@@ -142,6 +203,14 @@ if(GTest_FOUND OR TARGET GTest::gtest_main)
         GTest::gtest_main
         hotplugpp
     )
+<<<<<<< HEAD
+=======
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+        set_target_properties(iplugin_tests PROPERTIES
+            VS_GLOBAL_BuildProjectReferences false
+        )
+    endif()
+>>>>>>> 4ea5294ad7490880e860130d95531f99ed074870
     gtest_discover_tests(iplugin_tests)
 
     # Integration tests
@@ -158,10 +227,22 @@ if(GTest_FOUND OR TARGET GTest::gtest_main)
         SHARED_LIB_SUFFIX="${SHARED_LIB_SUFFIX}"
     )
     add_dependencies(integration_tests test_plugin)
+<<<<<<< HEAD
     gtest_discover_tests(integration_tests)
 else()
     message(STATUS
         "GoogleTest was not found. Building only CMake-script regression checks. "
         "Set HOTPLUGPP_FETCH_GTEST=ON to fetch GoogleTest during configure."
+=======
+    if(CMAKE_GENERATOR MATCHES "Visual Studio")
+        set_target_properties(integration_tests PROPERTIES
+            VS_GLOBAL_BuildProjectReferences false
+        )
+    endif()
+    gtest_discover_tests(integration_tests)
+else()
+    message(STATUS
+        "GoogleTest was not found. Skipping GoogleTest-based tests. Install GTest or set HOTPLUGPP_FETCH_GTEST=ON to enable them."
+>>>>>>> 4ea5294ad7490880e860130d95531f99ed074870
     )
 endif()

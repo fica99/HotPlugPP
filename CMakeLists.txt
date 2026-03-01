@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.15)
+
+if(CMAKE_GENERATOR MATCHES "Visual Studio")
+    set(CMAKE_SUPPRESS_REGENERATION ON)
+    set(CMAKE_VS_GLOBALS "BuildInParallel=false")
+endif()
+
 project(HotPlugPP VERSION 1.0.0 LANGUAGES CXX)
 
 # Set C++ standard
@@ -24,7 +30,14 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-option(HOTPLUGPP_BUILD_GUI_EXAMPLE "Build the optional GUI host example" ON)
+if(WIN32)
+    set(HOTPLUGPP_BUILD_GUI_EXAMPLE_DEFAULT ON)
+else()
+    set(HOTPLUGPP_BUILD_GUI_EXAMPLE_DEFAULT OFF)
+endif()
+
+option(HOTPLUGPP_BUILD_GUI_EXAMPLE "Build the optional GUI host example"
+       ${HOTPLUGPP_BUILD_GUI_EXAMPLE_DEFAULT})
 
 # Add subdirectories
 add_subdirectory(src)

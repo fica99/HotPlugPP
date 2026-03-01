@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 set(gui_source "${PROJECT_SOURCE_DIR}/examples/gui_host_app.cpp")
 
 if(NOT EXISTS "${gui_source}")
@@ -22,6 +23,30 @@ foreach(required_snippet IN LISTS required_snippets)
     if(snippet_index EQUAL -1)
         message(FATAL_ERROR
             "GUI example source is missing required contract text: ${required_snippet}"
+=======
+set(GUI_SOURCE_FILE "@CMAKE_SOURCE_DIR@/examples/gui_host_app.cpp")
+
+if(NOT EXISTS "${GUI_SOURCE_FILE}")
+    message(FATAL_ERROR "Missing GUI example source file: ${GUI_SOURCE_FILE}")
+endif()
+
+file(READ "${GUI_SOURCE_FILE}" GUI_SOURCE_CONTENT)
+
+foreach(REQUIRED_SNIPPET
+    "loadPlugin("
+    "unloadPlugin("
+    "checkAndReload("
+    "getName()"
+    "getVersion().toString()"
+    "\"Load\""
+    "\"Unload\""
+    "\"Check/Reload\""
+)
+    string(FIND "${GUI_SOURCE_CONTENT}" "${REQUIRED_SNIPPET}" MATCH_INDEX)
+    if(MATCH_INDEX EQUAL -1)
+        message(FATAL_ERROR
+            "GUI example source is missing required snippet: ${REQUIRED_SNIPPET}"
+>>>>>>> 4ea5294ad7490880e860130d95531f99ed074870
         )
     endif()
 endforeach()

@@ -6,9 +6,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\examples\CMakeLists.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <Filter Include="Source Files">
       <UniqueIdentifier>{09783405-3D91-334A-94E1-A93AFB0B7F2E}</UniqueIdentifier>
     </Filter>

@@ -24,6 +24,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{3C982DF2-2DF0-360D-9754-2EC968B01E77}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
+    <BuildInParallel>false</BuildInParallel>
     <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <Platform>x64</Platform>
     <ProjectName>sample_plugin</ProjectName>
@@ -348,73 +349,10 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\examples\CMakeLists.txt">
-      <UseUtf8Encoding>Always</UseUtf8Encoding>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/examples/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19 -BC:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-impl --check-stamp-file C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-impl/examples/CMakeFiles/generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-impl\examples\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/examples/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19 -BC:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-impl --check-stamp-file C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-impl/examples/CMakeFiles/generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-impl\examples\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/examples/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19 -BC:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-impl --check-stamp-file C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-impl/examples/CMakeFiles/generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-impl\examples\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/examples/CMakeLists.txt</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19 -BC:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-impl --check-stamp-file C:/Users/ficac/Desktop/projects/my/HotPlugPP-implementer-issue-19/build-impl/examples/CMakeFiles/generate.stamp
-if %errorlevel% neq 0 goto :cmEnd
-:cmEnd
-endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
-:cmErrorLevel
-exit /b %1
-:cmDone
-if %errorlevel% neq 0 goto :VCEnd</Command>
-      <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-impl\examples\CMakeFiles\generate.stamp</Outputs>
-      <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\examples\sample_plugin\sample_plugin.cpp" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\build-impl\ZERO_CHECK.vcxproj">
-      <Project>{F7BB7AB7-36A6-35EC-8FFE-24D85953ABEF}</Project>
-      <Name>ZERO_CHECK</Name>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
