@@ -308,21 +308,31 @@ bool startWatching(const PluginLoader* loader, const std::string& path) {
               << "; falling back to the built-in polling watcher." << std::endl;
 #endif
 
-    state.watcherThread = std::thread([&state, watchedPath]() {
-        auto lastObserved = getFileModificationTimeForWatch(watchedPath);
+    try {
+        state.watcherThread = std::thread([&state, watchedPath]() {
+            auto lastObserved = getFileModificationTimeForWatch(watchedPath);
 
-        while (!state.stopRequested.load(std::memory_order_acquire)) {
-            const auto currentObserved = getFileModificationTimeForWatch(watchedPath);
-            if (currentObserved > lastObserved) {
-                lastObserved = currentObserved;
-                notifyPluginChange(state);
-            } else if (currentObserved != std::chrono::system_clock::time_point()) {
-                lastObserved = currentObserved;
+            while (!state.stopRequested.load(std::memory_order_acquire)) {
+                const auto currentObserved = getFileModificationTimeForWatch(watchedPath);
+                if (currentObserved > lastObserved) {
+                    lastObserved = currentObserved;
+                    notifyPluginChange(state);
+                } else if (currentObserved != std::chrono::system_clock::time_point()) {
+                    lastObserved = currentObserved;
+                }
+
+                std::this_thread::sleep_for(kWatchPollInterval);
             }
-
-            std::this_thread::sleep_for(kWatchPollInterval);
-        }
-    });
+        });
+    } catch (const std::exception& ex) {
+        stopWatching(state);
+        std::cerr << "Polling watcher setup failed for " << path << ": " << ex.what() << std::endl;
+        return false;
+    } catch (...) {
+        stopWatching(state);
+        std::cerr << "Polling watcher setup failed for " << path << "." << std::endl;
+        return false;
+    }
     state.watchActive = true;
 
     return true;
