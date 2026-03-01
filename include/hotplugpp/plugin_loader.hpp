@@ -45,8 +45,12 @@ class PluginLoader {
 
     /**
      * @brief Load a plugin from a shared library
-     * @param path Path to the plugin library (.so/.dll/.dylib)
-     * @return true if loading succeeded, false otherwise
+     * @param path Path to the plugin
+     * library (.so/.dll/.dylib)
+     * @return true if loading succeeded, false otherwise. On
+     * success, HotPlugPP also attempts
+     * to start automatic file watching for that plugin
+     * path.
      */
     bool loadPlugin(const std::string& path);
 

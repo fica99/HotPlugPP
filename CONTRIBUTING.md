@@ -62,6 +62,12 @@ If you need to exercise the polling watcher instead of `efsw`, configure with:
 cmake -S . -B build -DHOTPLUGPP_USE_EFSW=OFF
 ```
 
+If you want to keep `HOTPLUGPP_USE_EFSW=ON` but prevent using the bundled shim fallback, configure with:
+
+```bash
+cmake -S . -B build -DHOTPLUGPP_FETCH_EFSW=OFF -DHOTPLUGPP_USE_BUNDLED_EFSW_STUB=OFF
+```
+
 ## Coding Standards
 
 ### C++ Style

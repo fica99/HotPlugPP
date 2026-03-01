@@ -8,3 +8,5 @@
 - Added debounce handling so rapid duplicate file-change notifications coalesce into a single reload.
 - Added tests for file-change-triggered reloads, duplicate change coalescing, and fallback behavior when watcher setup rejects a path.
 - Updated build behavior so examples and tests are excluded from the default build and must be built explicitly by target.
+- Added `HOTPLUGPP_USE_BUNDLED_EFSW_STUB` so offline/dependency-constrained builds can keep watcher support through the bundled shim.
+- Consolidated test execution under `hotplugpp_tests`, with automatic fallback to the bundled test shim when GoogleTest is unavailable.
