@@ -170,6 +170,58 @@ function Get-WorktreeSyncFailureDetails {
     return (($parts | Where-Object { $_ -and $_.Trim() }) -join "`n`n").Trim()
 }
 
+function Get-GeneratedArtifactPathspecs {
+    return @(
+        ":(glob)**/build/**",
+        ":(glob)**/build-*/**",
+        ":(glob)**/CMakeFiles/**",
+        ":(glob)**/CMakeCache.txt",
+        ":(glob)**/Testing/Temporary/**",
+        ":(glob)**/*.sln",
+        ":(glob)**/*.vcxproj",
+        ":(glob)**/*.vcxproj.filters",
+        ":(glob)**/*.tlog/**",
+        ":(glob)**/*.recipe",
+        ":(glob)**/*.lastbuildstate"
+    )
+}
+
+function Remove-GeneratedArtifacts {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$WorktreeDir,
+        [string]$Context = "worktree"
+    )
+
+    $artifactPathspecs = Get-GeneratedArtifactPathspecs
+
+    $rmArtifactsResult = Invoke-GitCapture -ArgumentList (@("-C", $WorktreeDir, "rm", "-r", "-f", "--ignore-unmatch", "--") + $artifactPathspecs)
+    if ($rmArtifactsResult.ExitCode -ne 0) {
+        throw "Failed to prune tracked build artifacts from $Context '$WorktreeDir': $(Get-ProcessFailureDetails -Result $rmArtifactsResult)"
+    }
+
+    $cleanArtifactsResult = Invoke-GitCapture -ArgumentList (@("-C", $WorktreeDir, "clean", "-fd", "--") + $artifactPathspecs)
+    if ($cleanArtifactsResult.ExitCode -ne 0) {
+        throw "Failed to prune untracked build artifacts from $Context '$WorktreeDir': $(Get-ProcessFailureDetails -Result $cleanArtifactsResult)"
+    }
+}
+
+function Ensure-NoInProgressMerge {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$WorktreeDir,
+        [string]$Context = "worktree"
+    )
+
+    $mergeHeadResult = Invoke-GitCapture -ArgumentList @("-C", $WorktreeDir, "rev-parse", "-q", "--verify", "MERGE_HEAD")
+    if ($mergeHeadResult.ExitCode -eq 0) {
+        $abortResult = Invoke-GitCapture -ArgumentList @("-C", $WorktreeDir, "merge", "--abort")
+        if ($abortResult.ExitCode -ne 0) {
+            throw "Failed to abort in-progress merge in $Context '$WorktreeDir': $(Get-ProcessFailureDetails -Result $abortResult)"
+        }
+    }
+}
+
 function Resolve-CommandPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -412,6 +464,10 @@ function Sync-WorktreeFromSource {
         [Parameter(Mandatory = $true)]
         [string]$DestDir
     )
+    Ensure-NoInProgressMerge -WorktreeDir $DestDir -Context "destination"
+    Remove-GeneratedArtifacts -WorktreeDir $SourceDir -Context "source"
+    Remove-GeneratedArtifacts -WorktreeDir $DestDir -Context "destination"
+
     $statusResult = Invoke-GitCapture -ArgumentList @("-C", $SourceDir, "status", "--porcelain")
     if ($statusResult.ExitCode -ne 0) {
         throw "Failed to inspect git status in '$SourceDir': $($statusResult.StdErr)"
@@ -809,30 +865,8 @@ function Publish-PullRequest {
 
     $implBranch = $branchResult.StdOut
     if ($implBranch -and $implBranch -ne "HEAD") {
-        $artifactPathspecs = @(
-            ":(glob)**/build/**",
-            ":(glob)**/build-*/**",
-            ":(glob)**/CMakeFiles/**",
-            ":(glob)**/CMakeCache.txt",
-            ":(glob)**/Testing/Temporary/**",
-            ":(glob)**/*.sln",
-            ":(glob)**/*.vcxproj",
-            ":(glob)**/*.vcxproj.filters",
-            ":(glob)**/*.tlog/**",
-            ":(glob)**/*.recipe",
-            ":(glob)**/*.lastbuildstate"
-        )
-
         # Ensure final PR contains only source changes and no generated build artifacts.
-        $rmArtifactsResult = Invoke-GitCapture -ArgumentList (@("-C", $implementerDir, "rm", "-r", "-f", "--ignore-unmatch", "--") + $artifactPathspecs)
-        if ($rmArtifactsResult.ExitCode -ne 0) {
-            throw "Failed to prune tracked build artifacts from implementer worktree: $(Get-ProcessFailureDetails -Result $rmArtifactsResult)"
-        }
-
-        $cleanArtifactsResult = Invoke-GitCapture -ArgumentList (@("-C", $implementerDir, "clean", "-fd", "--") + $artifactPathspecs)
-        if ($cleanArtifactsResult.ExitCode -ne 0) {
-            throw "Failed to prune untracked build artifacts from implementer worktree: $(Get-ProcessFailureDetails -Result $cleanArtifactsResult)"
-        }
+        Remove-GeneratedArtifacts -WorktreeDir $implementerDir -Context "implementer"
 
         $statusResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "status", "--porcelain")
         if ($statusResult.ExitCode -ne 0) {
