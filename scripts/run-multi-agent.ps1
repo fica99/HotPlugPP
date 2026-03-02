@@ -509,7 +509,9 @@ function Sync-WorktreeFromSource {
         throw "Worktree sync fetch from '$SourceDir' to '$DestDir' failed. $(Get-ProcessFailureDetails -Result $fetchResult)"
     }
 
-    $mergeResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "merge", "FETCH_HEAD", "--no-edit")
+    # Source worktree is authoritative during role-to-role promotion.
+    # Auto-resolve textual conflicts in favor of FETCH_HEAD to keep orchestration non-interactive.
+    $mergeResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "merge", "FETCH_HEAD", "--no-edit", "-X", "theirs")
     if ($mergeResult.ExitCode -ne 0) {
         throw "Worktree sync from '$SourceDir' to '$DestDir' encountered issues: $(Get-WorktreeSyncFailureDetails -DestDir $DestDir -Result $mergeResult)"
     }
