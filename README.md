@@ -40,16 +40,18 @@ hot-reload status for a plugin.
   description, and status messages.
 - The sample pre-fills the plugin path with `sample_plugin` from the executable directory, then
   falls back to the parent output directory when needed.
+- The executable also supports `--smoke-test` for non-interactive runtime validation (used by
+  CTest when the GUI target is available).
 
 Example configure, build, and run flow:
 
 ```powershell
-cmake -S . -B build -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON
 cmake -S . -B build `
   -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON `
   -DHOTPLUGPP_IMGUI_DIR=C:\dev\imgui
 cmake --build build --config Release --parallel
 .\build\bin\gui_host_app.exe
+ctest --test-dir build -C Release --output-on-failure -R gui_example_runtime_smoke
 ```
 
 ## Creating a Plugin

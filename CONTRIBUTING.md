@@ -158,21 +158,18 @@ private:
 ### Running Tests
 
 ```bash
-# Build and run examples
-cd build
-cmake --build .
+# Configure, build, and run tests from repository root
+cmake -S . -B build
+cmake --build build --config Release --parallel
+ctest --test-dir build -C Release --output-on-failure
+cmake -P scripts/check-format.cmake
+```
 
-# Test sample plugin
-./bin/host_app ./bin/libsample_plugin.so
+Optional GUI sample validation (requires GUI dependencies and
+`-DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON` during configure):
 
-# Test math plugin
-./bin/host_app ./bin/libmath_plugin.so
-
-# Test hot-reload
-# 1. Start host_app with a plugin
-# 2. Modify the plugin source
-# 3. Rebuild the plugin
-# 4. Verify hot-reload occurs
+```bash
+ctest --test-dir build -C Release --output-on-failure -R gui_example_runtime_smoke
 ```
 
 ## Documentation
