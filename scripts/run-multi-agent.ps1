@@ -9,11 +9,166 @@ param(
     [string]$SingleRole = "",
     [switch]$PublishToGitHub,
     [switch]$DryRun,
-    [int]$MaxIterations = 3
+    [int]$MaxIterations = 2
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+# Keep external command I/O in UTF-8 so gh JSON/text is decoded correctly on Windows.
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[Console]::InputEncoding = $utf8NoBom
+[Console]::OutputEncoding = $utf8NoBom
+$OutputEncoding = $utf8NoBom
+
+function Invoke-ProcessCapture {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+        [string[]]$ArgumentList = @()
+    )
+
+    $quotedArgs = foreach ($arg in $ArgumentList) {
+        if ($null -eq $arg) {
+            '""'
+            continue
+        }
+
+        $text = [string]$arg
+        if ($text -eq "") {
+            '""'
+            continue
+        }
+
+        if ($text -notmatch '[\s"]') {
+            $text
+            continue
+        }
+
+        $escaped = $text -replace '(\\*)"', '$1$1\"'
+        $escaped = $escaped -replace '(\\+)$', '$1$1'
+        '"' + $escaped + '"'
+    }
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = $FilePath
+    $startInfo.Arguments = [string]::Join(' ', $quotedArgs)
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    [void]$process.Start()
+
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+
+    $process.WaitForExit()
+    $stdoutTask.Wait()
+    $stderrTask.Wait()
+
+    $stdout = [string]$stdoutTask.Result
+    $stderr = [string]$stderrTask.Result
+
+    return [pscustomobject]@{
+        ExitCode = $process.ExitCode
+        StdOut   = $stdout.TrimEnd("`r", "`n")
+        StdErr   = $stderr.TrimEnd("`r", "`n")
+    }
+}
+
+function Invoke-GitCapture {
+    param([string[]]$ArgumentList = @())
+    return Invoke-ProcessCapture -FilePath "git" -ArgumentList $ArgumentList
+}
+
+function Save-RoleArtifactsAndCommit {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Role,
+        [Parameter(Mandatory = $true)]
+        [string]$RoleDir,
+        [Parameter(Mandatory = $true)]
+        [string]$PromptFile,
+        [Parameter(Mandatory = $true)]
+        [string]$OutputFile
+    )
+
+    $artifactDir = Join-Path $RoleDir ".agent-artifacts/issue-$IssueNumber"
+    New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+
+    $promptArtifact = Join-Path $artifactDir "$Role-prompt.md"
+    $outputArtifact = Join-Path $artifactDir "$Role-output.md"
+
+    Copy-Item -Path $PromptFile -Destination $promptArtifact -Force
+    Copy-Item -Path $OutputFile -Destination $outputArtifact -Force
+
+    $addResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "add", "--", $promptArtifact, $outputArtifact)
+    if ($addResult.ExitCode -ne 0) {
+        throw "Failed to stage role artifacts for '$Role' in '$RoleDir': $(Get-ProcessFailureDetails -Result $addResult)"
+    }
+
+    $statusResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "status", "--porcelain", "--", $promptArtifact, $outputArtifact)
+    if ($statusResult.ExitCode -ne 0) {
+        throw "Failed to inspect role artifact status for '$Role' in '$RoleDir': $(Get-ProcessFailureDetails -Result $statusResult)"
+    }
+
+    if (-not $statusResult.StdOut) {
+        return
+    }
+
+    $commitResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "commit", "-m", "artifact: $Role handoff for issue #$IssueNumber", "--", $promptArtifact, $outputArtifact)
+    if ($commitResult.ExitCode -ne 0) {
+        throw "Failed to commit role artifacts for '$Role' in '$RoleDir': $(Get-ProcessFailureDetails -Result $commitResult)"
+    }
+}
+
+function Get-ProcessFailureDetails {
+    param(
+        [Parameter(Mandatory = $true)]
+        $Result
+    )
+
+    if ($Result.StdErr) {
+        if ($Result.StdOut) {
+            return ($Result.StdErr + "`n" + $Result.StdOut).Trim()
+        }
+
+        return $Result.StdErr.Trim()
+    }
+
+    if ($Result.StdOut) {
+        return $Result.StdOut.Trim()
+    }
+
+    return "(exit code $($Result.ExitCode), no output from process)"
+}
+
+function Get-WorktreeSyncFailureDetails {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$DestDir,
+        [Parameter(Mandatory = $true)]
+        $Result
+    )
+
+    $parts = New-Object System.Collections.Generic.List[string]
+    $parts.Add((Get-ProcessFailureDetails -Result $Result))
+
+    $conflictResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "diff", "--name-only", "--diff-filter=U")
+    if ($conflictResult.ExitCode -eq 0 -and $conflictResult.StdOut) {
+        $parts.Add("Conflicted files:`n$($conflictResult.StdOut.Trim())")
+    }
+
+    $statusResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "status", "--short", "--branch")
+    if ($statusResult.ExitCode -eq 0 -and $statusResult.StdOut) {
+        $parts.Add("Destination status:`n$($statusResult.StdOut.Trim())")
+    }
+
+    return (($parts | Where-Object { $_ -and $_.Trim() }) -join "`n`n").Trim()
+}
 
 function Resolve-CommandPath {
     param(
@@ -74,7 +229,22 @@ function Get-IssueContext {
     }
 
     if ($script:GhCommand) {
-        return & $script:GhCommand issue view $IssueNumber --comments
+        $issueResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @("issue", "view", "$IssueNumber", "--json", "title,body,url")
+        if ($issueResult.ExitCode -ne 0) {
+            throw "Failed to read issue #$IssueNumber from GitHub. $($issueResult.StdErr)"
+        }
+
+        $issue = $issueResult.StdOut | ConvertFrom-Json
+        $body = if ($issue.body) { $issue.body.Trim() } else { "(no body provided)" }
+
+        return @"
+Issue #$IssueNumber
+Title: $($issue.title)
+URL: $($issue.url)
+
+Body:
+$body
+"@
     }
 
     $template = @"
@@ -105,6 +275,12 @@ function Invoke-CodexRole {
     if ($DryRun) {
         Set-Content -Path $OutputFile -Value "[DRY RUN] $Role was not executed.`nSTATUS: PASS`nSTATUS: READY" -Encoding UTF8
         return
+    }
+
+    $previousOutputExists = Test-Path $OutputFile
+    $previousOutputContent = $null
+    if ($previousOutputExists) {
+        $previousOutputContent = Get-Content -Raw $OutputFile
     }
 
     if ($Provider -eq "github-copilot") {
@@ -140,8 +316,44 @@ function Invoke-CodexRole {
             $codeArgs += @("-m", $Model)
         }
 
-        Get-Content -Raw $promptFile | & $script:CodexCommand @codeArgs
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            # codex/npm wrappers often write non-fatal startup lines to stderr on Windows.
+            # With global ErrorActionPreference=Stop this can surface as NativeCommandError.
+            $ErrorActionPreference = "Continue"
+            $codexOutput = Get-Content -Raw $promptFile | & $script:CodexCommand @codeArgs 2>&1
+        } finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+        $codexExitCode = $LASTEXITCODE
+        $codexOutputText = (($codexOutput | ForEach-Object { $_.ToString() }) -join "`n").Trim()
+
+        if ($codexExitCode -ne 0) {
+            $isUsageLimit = $codexOutputText -match "usage limit|try again at"
+            if ((Test-Path $OutputFile) -and ((Get-Item $OutputFile).Length -eq 0) -and $previousOutputExists) {
+                Set-Content -Path $OutputFile -Value $previousOutputContent -Encoding UTF8
+            }
+
+            if ($isUsageLimit) {
+                throw "Codex execution failed for role '$Role' due to usage limit. Details: $codexOutputText"
+            }
+
+            throw "Codex execution failed for role '$Role'. Details: $codexOutputText"
+        }
     }
+
+    if (-not (Test-Path $OutputFile)) {
+        throw "Role '$Role' did not produce the expected handoff file: $OutputFile"
+    }
+
+    if ((Get-Item $OutputFile).Length -eq 0) {
+        if ($previousOutputExists) {
+            Set-Content -Path $OutputFile -Value $previousOutputContent -Encoding UTF8
+        }
+        throw "Role '$Role' produced an empty handoff file: $OutputFile"
+    }
+
+    Save-RoleArtifactsAndCommit -Role $Role -RoleDir $RoleDir -PromptFile $promptFile -OutputFile $OutputFile
 }
 
 function Publish-HandoffComment {
@@ -166,7 +378,10 @@ function Publish-HandoffComment {
     $content = Get-Content -Raw $OutputFile
     Set-Content -Path $bodyFile -Value ($header + "`n" + $content) -Encoding UTF8
 
-    & $script:GhCommand issue comment $IssueNumber --body-file $bodyFile | Out-Null
+    $commentResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @("issue", "comment", "$IssueNumber", "--body-file", $bodyFile)
+    if ($commentResult.ExitCode -ne 0) {
+        throw "Failed to publish GitHub comment for role '$Role': $($commentResult.StdErr)"
+    }
 }
 
 function Test-AgentPass {
@@ -197,15 +412,86 @@ function Sync-WorktreeFromSource {
         [Parameter(Mandatory = $true)]
         [string]$DestDir
     )
-    $pending = & git -C $SourceDir status --porcelain 2>$null
-    if ($pending) {
-        & git -C $SourceDir add -A | Out-Null
-        & git -C $SourceDir commit -m "auto: agent checkpoint" 2>&1 | Out-Null
+    $statusResult = Invoke-GitCapture -ArgumentList @("-C", $SourceDir, "status", "--porcelain")
+    if ($statusResult.ExitCode -ne 0) {
+        throw "Failed to inspect git status in '$SourceDir': $($statusResult.StdErr)"
     }
-    & git -C $DestDir fetch $SourceDir HEAD 2>&1 | Out-Null
-    $mergeResult = & git -C $DestDir merge FETCH_HEAD --no-edit 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Worktree sync from '$SourceDir' to '$DestDir' encountered issues: $mergeResult"
+
+    $pending = $statusResult.StdOut
+    if ($pending) {
+        $addResult = Invoke-GitCapture -ArgumentList @("-C", $SourceDir, "add", "-A")
+        if ($addResult.ExitCode -ne 0) {
+            throw "Failed to stage changes in '$SourceDir': $($addResult.StdErr)"
+        }
+
+        $commitResult = Invoke-GitCapture -ArgumentList @("-C", $SourceDir, "commit", "-m", "auto: agent checkpoint")
+        if ($commitResult.ExitCode -ne 0) {
+            throw "Failed to create auto-checkpoint commit in '$SourceDir': $($commitResult.StdErr)"
+        }
+    }
+
+    $destStatusResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "status", "--porcelain")
+    if ($destStatusResult.ExitCode -ne 0) {
+        throw "Failed to inspect git status in '$DestDir': $($destStatusResult.StdErr)"
+    }
+
+    $destPending = $destStatusResult.StdOut
+    if ($destPending) {
+        $destAddResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "add", "-A")
+        if ($destAddResult.ExitCode -ne 0) {
+            throw "Failed to stage changes in '$DestDir': $($destAddResult.StdErr)"
+        }
+
+        $destCommitResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "commit", "-m", "auto: destination checkpoint")
+        if ($destCommitResult.ExitCode -ne 0) {
+            throw "Failed to create destination checkpoint commit in '$DestDir': $($destCommitResult.StdErr)"
+        }
+    }
+
+    $fetchResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "fetch", "--quiet", $SourceDir, "HEAD")
+    if ($fetchResult.ExitCode -ne 0) {
+        throw "Worktree sync fetch from '$SourceDir' to '$DestDir' failed. $(Get-ProcessFailureDetails -Result $fetchResult)"
+    }
+
+    $mergeResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "merge", "FETCH_HEAD", "--no-edit")
+    if ($mergeResult.ExitCode -ne 0) {
+        throw "Worktree sync from '$SourceDir' to '$DestDir' encountered issues: $(Get-WorktreeSyncFailureDetails -DestDir $DestDir -Result $mergeResult)"
+    }
+}
+
+function Ensure-GitSafeDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path $Path)) {
+        return
+    }
+
+    $resolvedPath = (Resolve-Path $Path).Path
+    $accessCheck = Invoke-GitCapture -ArgumentList @("-C", $resolvedPath, "status", "--porcelain")
+    if ($accessCheck.ExitCode -eq 0) {
+        return
+    }
+
+    if ($accessCheck.StdErr -notmatch "dubious ownership") {
+        throw "Failed to access git worktree '$resolvedPath': $($accessCheck.StdErr)"
+    }
+
+    $existingResult = Invoke-GitCapture -ArgumentList @("config", "--global", "--get-all", "safe.directory")
+    if ($existingResult.ExitCode -gt 1) {
+        throw "Failed to read git safe.directory entries: $($existingResult.StdErr)"
+    }
+
+    $existing = if ($existingResult.StdOut) { $existingResult.StdOut -split '\r?\n' } else { @() }
+    if ($existing -contains $resolvedPath) {
+        return
+    }
+
+    $addSafeResult = Invoke-GitCapture -ArgumentList @("config", "--global", "--add", "safe.directory", $resolvedPath)
+    if ($addSafeResult.ExitCode -ne 0) {
+        throw "Failed to add git safe.directory for '$resolvedPath': $(Get-ProcessFailureDetails -Result $addSafeResult)"
     }
 }
 
@@ -225,6 +511,7 @@ if ($Provider -eq "github-copilot" -and -not $script:GhCommand) {
 $rootPath = (Resolve-Path $BaseRoot).Path
 $HandoffDir = Join-Path $rootPath $HandoffRoot
 New-Item -ItemType Directory -Force -Path $HandoffDir | Out-Null
+$HandoffDir = (Resolve-Path $HandoffDir).Path
 
 $issueContext = Get-IssueContext
 $issueFile = Join-Path $HandoffDir ("issue-$IssueNumber-context.md")
@@ -232,13 +519,28 @@ Set-Content -Path $issueFile -Value $issueContext -Encoding UTF8
 
 $allowMissingWorktrees = [bool]$SingleRole
 $plannerDir = Resolve-RolePath -Role "planner" -Lenient:$allowMissingWorktrees
+$architectDir = Resolve-RolePath -Role "architect" -Lenient:$allowMissingWorktrees
 $implementerDir = Resolve-RolePath -Role "implementer" -Lenient:$allowMissingWorktrees
 $testerDir = Resolve-RolePath -Role "tester" -Lenient:$allowMissingWorktrees
 $securityCheckerDir = Resolve-RolePath -Role "security-checker" -Lenient:$allowMissingWorktrees
 $reviewerDir = Resolve-RolePath -Role "reviewer" -Lenient:$allowMissingWorktrees
 $docCheckerDir = Resolve-RolePath -Role "doc-checker" -Lenient:$allowMissingWorktrees
 
+@(
+    $plannerDir,
+    $architectDir,
+    $implementerDir,
+    $testerDir,
+    $securityCheckerDir,
+    $reviewerDir,
+    $docCheckerDir
+) | ForEach-Object {
+    Ensure-GitSafeDirectory -Path $_
+}
+
 $plannerOut = Join-Path $HandoffDir ("issue-$IssueNumber-planner.md")
+$architectOut = Join-Path $HandoffDir ("issue-$IssueNumber-architect.md")
+$plannerReviewOut = Join-Path $HandoffDir ("issue-$IssueNumber-planner-review.md")
 $implementerOut = Join-Path $HandoffDir ("issue-$IssueNumber-implementer.md")
 $testerOut = Join-Path $HandoffDir ("issue-$IssueNumber-tester.md")
 $securityCheckerOut = Join-Path $HandoffDir ("issue-$IssueNumber-security-checker.md")
@@ -267,6 +569,7 @@ Issue #$IssueNumber.
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 
 Task:
 - Implement according to planner handoff.
@@ -278,12 +581,50 @@ Task:
   - Remaining risks
 "@
 
+$architectPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+
+Task:
+- Produce architecture/design handoff for implementation.
+- Define key technical decisions, module boundaries, trade-offs, and integration constraints.
+- Call out risks and exact acceptance checkpoints for Implementer.
+- End with:
+  - Summary of changes: none (architecture stage)
+  - Files changed: none
+  - Validation commands run: none
+  - Remaining assumptions/risks
+"@
+
+$plannerReviewPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+- Architect handoff: $architectOut
+- Implementer handoff: $implementerOut
+
+Task:
+- Review implementation strictly against the original plan/scope and architect constraints.
+- Return only blocking gaps/regressions, ordered by severity.
+- End the output with exactly one JSON line:
+  AGENT_STATUS: {"status":"READY","findings":N}
+  or
+  AGENT_STATUS: {"status":"NOT READY","findings":N}
+  where N is the count of blocking findings.
+"@
+
 $testerPrompt = @"
 Issue #$IssueNumber.
 
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 - Implementer handoff: $implementerOut
 
 Task:
@@ -307,9 +648,8 @@ Issue #$IssueNumber.
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 - Implementer handoff: $implementerOut
-- Tester handoff: $testerOut
-- SecurityChecker handoff: $securityCheckerOut
 
 Task:
 - Perform review with focus on bugs, regressions, API compatibility, and testing gaps.
@@ -327,6 +667,7 @@ Issue #$IssueNumber.
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 - Implementer handoff: $implementerOut
 - Tester handoff: $testerOut
 
@@ -352,13 +693,12 @@ Issue #$IssueNumber.
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 - Previous implementer handoff: $implementerOut
 - Tester handoff (contains failures): $testerOut
-- SecurityChecker handoff (may not exist yet): $securityCheckerOut
 
 Task:
 - Fix all build, test, and format failures identified by the Tester.
-- Fix any critical or high severity security findings identified by the SecurityChecker (if present).
 - Make code changes directly in this worktree.
 - At end, report:
   - Root causes identified
@@ -367,15 +707,36 @@ Task:
   - Remaining risks
 "@
 
+$implementerFixFromPlannerReviewPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+- Architect handoff: $architectOut
+- Previous implementer handoff: $implementerOut
+- Planner review handoff (contains findings): $plannerReviewOut
+
+Task:
+- Address all blocking findings from Planner review.
+- Keep changes strictly within planned scope unless a blocker requires adjustment.
+- Re-run build/test/format checks relevant to your changes.
+- At end, report:
+  - Findings addressed (reference planner-review finding)
+  - Files changed
+  - Validation commands run and results
+  - Remaining unresolved findings (if any) with justification
+  - Remaining risks or assumptions
+"@
+
 $implementerFixFromReviewerPrompt = @"
 Issue #$IssueNumber.
 
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
 - Previous implementer handoff: $implementerOut
-- Tester handoff: $testerOut
-- SecurityChecker handoff: $securityCheckerOut
 - Reviewer handoff (contains findings): $reviewerOut
 
 Task:
@@ -391,12 +752,36 @@ Task:
   - Remaining risks or assumptions
 "@
 
+$implementerFixFromSecurityPrompt = @"
+Issue #$IssueNumber.
+
+Read:
+- Issue context: $issueFile
+- Planner handoff: $plannerOut
+- Architect handoff: $architectOut
+- Previous implementer handoff: $implementerOut
+- SecurityChecker handoff (contains findings): $securityCheckerOut
+
+Task:
+- Address all critical/high (and applicable medium) security findings.
+- Preserve API/ABI unless a security fix explicitly requires change and is documented.
+- Re-run build/test/format checks relevant to your changes.
+- At end, report:
+  - Findings addressed (reference security finding)
+  - Files changed
+  - Validation commands run and results
+  - Remaining unresolved findings (if any) with justification
+  - Remaining risks or assumptions
+"@
+
 $docCheckerPrompt = @"
 Issue #$IssueNumber.
 
 Read:
 - Issue context: $issueFile
 - Planner handoff: $plannerOut
+- Architect handoff: $architectOut
+- Planner review handoff: $plannerReviewOut
 - Implementer handoff: $implementerOut
 - Tester handoff: $testerOut
 - SecurityChecker handoff: $securityCheckerOut
@@ -417,28 +802,51 @@ Task:
 function Publish-PullRequest {
     if (-not ($PublishToGitHub -and $script:GhCommand)) { return }
     Write-Host "Creating pull request from implementer branch..."
-    $implBranch = & git -C $implementerDir rev-parse --abbrev-ref HEAD 2>$null
+    $branchResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "rev-parse", "--abbrev-ref", "HEAD")
+    if ($branchResult.ExitCode -ne 0) {
+        throw "Failed to determine implementer branch: $(Get-ProcessFailureDetails -Result $branchResult)"
+    }
+
+    $implBranch = $branchResult.StdOut
     if ($implBranch -and $implBranch -ne "HEAD") {
-        $pending = & git -C $implementerDir status --porcelain 2>$null
-        if ($pending) {
-            & git -C $implementerDir add -A | Out-Null
-            & git -C $implementerDir commit -m "feat: automated fix for issue #$IssueNumber" | Out-Null
+        $statusResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "status", "--porcelain")
+        if ($statusResult.ExitCode -ne 0) {
+            throw "Failed to inspect implementer worktree status: $(Get-ProcessFailureDetails -Result $statusResult)"
         }
-        $pushOutput = & git -C $implementerDir push origin $implBranch 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Failed to push branch '$implBranch'. Skipping PR creation. Error: $pushOutput"
+
+        $pending = $statusResult.StdOut
+        if ($pending) {
+            $addResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "add", "-A")
+            if ($addResult.ExitCode -ne 0) {
+                throw "Failed to stage implementer changes: $(Get-ProcessFailureDetails -Result $addResult)"
+            }
+
+            $commitResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "commit", "-m", "feat: automated fix for issue #$IssueNumber")
+            if ($commitResult.ExitCode -ne 0) {
+                throw "Failed to create implementer publish commit in '$implementerDir': $(Get-ProcessFailureDetails -Result $commitResult)"
+            }
+        }
+
+        $pushResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "push", "origin", $implBranch)
+        if ($pushResult.ExitCode -ne 0) {
+            Write-Warning "Failed to push branch '$implBranch'. Skipping PR creation. Error: $(Get-ProcessFailureDetails -Result $pushResult)"
         } else {
-            $prResult = & $script:GhCommand pr create `
-                --title "fix: automated resolution of issue #$IssueNumber" `
-                --body "Closes #$IssueNumber" `
-                --base main `
-                --head $implBranch 2>&1
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "PR created: $prResult"
-                & $script:GhCommand pr merge --auto --squash 2>&1 | Out-Null
+            $prResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @(
+                "pr", "create",
+                "--title", "fix: automated resolution of issue #$IssueNumber",
+                "--body", "Closes #$IssueNumber",
+                "--base", "main",
+                "--head", $implBranch
+            )
+            if ($prResult.ExitCode -eq 0) {
+                Write-Host "PR created: $($prResult.StdOut)"
+                $mergeResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @("pr", "merge", "--auto", "--squash")
+                if ($mergeResult.ExitCode -ne 0) {
+                    throw "PR was created but auto-merge could not be enabled: $(Get-ProcessFailureDetails -Result $mergeResult)"
+                }
                 Write-Host "Auto-merge enabled."
             } else {
-                Write-Warning "PR creation failed (PR may already exist). Output: $prResult"
+                Write-Warning "PR creation failed (PR may already exist). Output: $(Get-ProcessFailureDetails -Result $prResult)"
             }
         }
     }
@@ -447,14 +855,35 @@ function Publish-PullRequest {
 function Publish-RoleBranch {
     param([Parameter(Mandatory = $true)][string]$RoleDir)
     if (-not $PublishToGitHub) { return }
-    $branch = & git -C $RoleDir rev-parse --abbrev-ref HEAD 2>$null
-    if (-not $branch -or $branch -eq "HEAD") { return }
-    $pending = & git -C $RoleDir status --porcelain 2>$null
-    if ($pending) {
-        & git -C $RoleDir add -A | Out-Null
-        & git -C $RoleDir commit -m "auto: agent checkpoint" 2>&1 | Out-Null
+    $branchResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "rev-parse", "--abbrev-ref", "HEAD")
+    if ($branchResult.ExitCode -ne 0) {
+        throw "Failed to determine role branch in '$RoleDir': $(Get-ProcessFailureDetails -Result $branchResult)"
     }
-    & git -C $RoleDir push origin $branch 2>&1 | Out-Null
+
+    $branch = $branchResult.StdOut
+    if (-not $branch -or $branch -eq "HEAD") { return }
+    $statusResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "status", "--porcelain")
+    if ($statusResult.ExitCode -ne 0) {
+        throw "Failed to inspect role worktree status in '$RoleDir': $(Get-ProcessFailureDetails -Result $statusResult)"
+    }
+
+    $pending = $statusResult.StdOut
+    if ($pending) {
+        $addResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "add", "-A")
+        if ($addResult.ExitCode -ne 0) {
+            throw "Failed to stage role changes in '$RoleDir': $(Get-ProcessFailureDetails -Result $addResult)"
+        }
+
+        $commitResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "commit", "-m", "auto: agent checkpoint")
+        if ($commitResult.ExitCode -ne 0) {
+            throw "Failed to create auto-checkpoint commit in '$RoleDir': $(Get-ProcessFailureDetails -Result $commitResult)"
+        }
+    }
+
+    $pushResult = Invoke-GitCapture -ArgumentList @("-C", $RoleDir, "push", "origin", $branch)
+    if ($pushResult.ExitCode -ne 0) {
+        throw "Failed to push role branch '$branch' from '$RoleDir': $(Get-ProcessFailureDetails -Result $pushResult)"
+    }
 }
 
 if ($SingleRole) {
@@ -465,7 +894,15 @@ if ($SingleRole) {
             Publish-HandoffComment -Role "planner" -OutputFile $plannerOut
             Publish-RoleBranch -RoleDir $plannerDir
         }
+        "architect" {
+            if (Test-Path $plannerDir) { Sync-WorktreeFromSource -SourceDir $plannerDir -DestDir $architectDir }
+            Write-Host "Running Architect (single-role mode)..."
+            Invoke-CodexRole -Role "architect" -RolePrompt $architectPrompt -RoleDir $architectDir -OutputFile $architectOut
+            Publish-HandoffComment -Role "architect" -OutputFile $architectOut
+            Publish-RoleBranch -RoleDir $architectDir
+        }
         "implementer" {
+            if (Test-Path $architectDir) { Sync-WorktreeFromSource -SourceDir $architectDir -DestDir $implementerDir }
             Write-Host "Running Implementer (single-role mode)..."
             Invoke-CodexRole -Role "implementer" -RolePrompt $implementerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
             Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
@@ -479,21 +916,21 @@ if ($SingleRole) {
             Publish-RoleBranch -RoleDir $testerDir
         }
         "security-checker" {
-            if (Test-Path $testerDir) { Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $securityCheckerDir }
+            if (Test-Path $implementerDir) { Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $securityCheckerDir }
             Write-Host "Running SecurityChecker (single-role mode)..."
             Invoke-CodexRole -Role "security-checker" -RolePrompt $securityCheckerPrompt -RoleDir $securityCheckerDir -OutputFile $securityCheckerOut
             Publish-HandoffComment -Role "security-checker" -OutputFile $securityCheckerOut
             Publish-RoleBranch -RoleDir $securityCheckerDir
         }
         "reviewer" {
-            if (Test-Path $securityCheckerDir) { Sync-WorktreeFromSource -SourceDir $securityCheckerDir -DestDir $reviewerDir }
+            if (Test-Path $implementerDir) { Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $reviewerDir }
             Write-Host "Running Reviewer (single-role mode)..."
             Invoke-CodexRole -Role "reviewer" -RolePrompt $reviewerPrompt -RoleDir $reviewerDir -OutputFile $reviewerOut
             Publish-HandoffComment -Role "reviewer" -OutputFile $reviewerOut
             Publish-RoleBranch -RoleDir $reviewerDir
         }
         "doc-checker" {
-            if (Test-Path $reviewerDir) { Sync-WorktreeFromSource -SourceDir $reviewerDir -DestDir $docCheckerDir }
+            if (Test-Path $implementerDir) { Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $docCheckerDir }
             Write-Host "Running DocChecker (single-role mode)..."
             Invoke-CodexRole -Role "doc-checker" -RolePrompt $docCheckerPrompt -RoleDir $docCheckerDir -OutputFile $docCheckerOut
             Publish-HandoffComment -Role "doc-checker" -OutputFile $docCheckerOut
@@ -501,7 +938,7 @@ if ($SingleRole) {
             Publish-PullRequest
         }
         default {
-            throw "Unknown role: '$SingleRole'. Valid roles: planner, implementer, tester, security-checker, reviewer, doc-checker"
+            throw "Unknown role: '$SingleRole'. Valid roles: planner, architect, implementer, tester, security-checker, reviewer, doc-checker"
         }
     }
 } else {
@@ -510,83 +947,107 @@ Write-Host "Running Planner..."
 Invoke-CodexRole -Role "planner" -RolePrompt $plannerPrompt -RoleDir $plannerDir -OutputFile $plannerOut
 Publish-HandoffComment -Role "planner" -OutputFile $plannerOut
 
-# Implementer → Tester → SecurityChecker loop: retry Implementer if Tester or SecurityChecker fails
-$implTesterIter = 0
-$innerLoopPassed = $false
-do {
-    $implTesterIter++
-    if ($implTesterIter -eq 1) {
-        Write-Host "Running Implementer..."
-        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
-    } else {
-        Write-Host "Running Implementer (retry $($implTesterIter - 1) - fixing tester/security failures)..."
-        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromTesterPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+# Architect -> Implementer -> Planner review -> Reviewer -> SecurityChecker -> Tester
+Write-Host "Running Architect..."
+Sync-WorktreeFromSource -SourceDir $plannerDir -DestDir $architectDir
+Invoke-CodexRole -Role "architect" -RolePrompt $architectPrompt -RoleDir $architectDir -OutputFile $architectOut
+Publish-HandoffComment -Role "architect" -OutputFile $architectOut
+Sync-WorktreeFromSource -SourceDir $architectDir -DestDir $implementerDir
+
+Write-Host "Running Implementer..."
+Invoke-CodexRole -Role "implementer" -RolePrompt $implementerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+
+$plannerReviewPassed = $false
+for ($plannerReviewIter = 1; $plannerReviewIter -le $MaxIterations; $plannerReviewIter++) {
+    Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $plannerDir
+    Write-Host "Running Planner Review (iteration $plannerReviewIter)..."
+    Invoke-CodexRole -Role "planner-review" -RolePrompt $plannerReviewPrompt -RoleDir $plannerDir -OutputFile $plannerReviewOut
+    Publish-HandoffComment -Role "planner-review" -OutputFile $plannerReviewOut
+    if (Test-AgentPass -OutputFile $plannerReviewOut -PassStatus "READY") {
+        $plannerReviewPassed = $true
+        Sync-WorktreeFromSource -SourceDir $plannerDir -DestDir $implementerDir
+        break
     }
-    Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
-    Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $testerDir
-
-    Write-Host "Running Tester (iteration $implTesterIter)..."
-    Invoke-CodexRole -Role "tester" -RolePrompt $testerPrompt -RoleDir $testerDir -OutputFile $testerOut
-    Publish-HandoffComment -Role "tester" -OutputFile $testerOut
-
-    $testerPassed = Test-AgentPass -OutputFile $testerOut -PassStatus "PASS"
-    if ($testerPassed) {
-        Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $securityCheckerDir
-
-        Write-Host "Running SecurityChecker (iteration $implTesterIter)..."
-        Invoke-CodexRole -Role "security-checker" -RolePrompt $securityCheckerPrompt -RoleDir $securityCheckerDir -OutputFile $securityCheckerOut
-        Publish-HandoffComment -Role "security-checker" -OutputFile $securityCheckerOut
-
-        $innerLoopPassed = Test-AgentPass -OutputFile $securityCheckerOut -PassStatus "PASS"
+    if ($plannerReviewIter -lt $MaxIterations) {
+        Sync-WorktreeFromSource -SourceDir $plannerDir -DestDir $implementerDir
+        Write-Host "Running Implementer (retry $plannerReviewIter - addressing planner review findings)..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromPlannerReviewPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
     }
-} while (-not $innerLoopPassed -and $implTesterIter -lt $MaxIterations)
-
-if (-not $innerLoopPassed) {
-    Write-Warning "Tester/SecurityChecker did not achieve STATUS: PASS after $MaxIterations iteration(s). Continuing pipeline with last known state."
+}
+if (-not $plannerReviewPassed) {
+    Write-Warning "Planner review did not achieve STATUS: READY after $MaxIterations iteration(s). Continuing with last known state."
 }
 
-# Reviewer loop: if Reviewer rejects, send back to Implementer → Tester → SecurityChecker → Reviewer
-$reviewIter = 0
-do {
-    $reviewIter++
-    if ($reviewIter -gt 1) {
-        Write-Host "Running Implementer (retry $($reviewIter - 1) - addressing reviewer findings)..."
-        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromReviewerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
-        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
-        Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $testerDir
-
-        Write-Host "Running Tester (re-run after implementer retry $($reviewIter - 1))..."
-        Invoke-CodexRole -Role "tester" -RolePrompt $testerPrompt -RoleDir $testerDir -OutputFile $testerOut
-        Publish-HandoffComment -Role "tester" -OutputFile $testerOut
-
-        if (-not (Test-AgentPass -OutputFile $testerOut -PassStatus "PASS")) {
-            Write-Warning "Tester did not pass after implementer retry $($reviewIter - 1). Breaking reviewer loop."
-            break
-        }
-        Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $securityCheckerDir
-
-        Write-Host "Running SecurityChecker (re-run after implementer retry $($reviewIter - 1))..."
-        Invoke-CodexRole -Role "security-checker" -RolePrompt $securityCheckerPrompt -RoleDir $securityCheckerDir -OutputFile $securityCheckerOut
-        Publish-HandoffComment -Role "security-checker" -OutputFile $securityCheckerOut
-
-        if (-not (Test-AgentPass -OutputFile $securityCheckerOut -PassStatus "PASS")) {
-            Write-Warning "SecurityChecker did not pass after implementer retry $($reviewIter - 1). Breaking reviewer loop."
-            break
-        }
-    }
-
-    Sync-WorktreeFromSource -SourceDir $securityCheckerDir -DestDir $reviewerDir
+$reviewerPassed = $false
+for ($reviewIter = 1; $reviewIter -le $MaxIterations; $reviewIter++) {
+    Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $reviewerDir
     Write-Host "Running Reviewer (iteration $reviewIter)..."
     Invoke-CodexRole -Role "reviewer" -RolePrompt $reviewerPrompt -RoleDir $reviewerDir -OutputFile $reviewerOut
     Publish-HandoffComment -Role "reviewer" -OutputFile $reviewerOut
-} while (-not (Test-AgentPass -OutputFile $reviewerOut -PassStatus "READY") -and $reviewIter -lt $MaxIterations)
+    if (Test-AgentPass -OutputFile $reviewerOut -PassStatus "READY") {
+        $reviewerPassed = $true
+        Sync-WorktreeFromSource -SourceDir $reviewerDir -DestDir $implementerDir
+        break
+    }
+    if ($reviewIter -lt $MaxIterations) {
+        Sync-WorktreeFromSource -SourceDir $reviewerDir -DestDir $implementerDir
+        Write-Host "Running Implementer (retry $reviewIter - addressing reviewer findings)..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromReviewerPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+    }
+}
+if (-not $reviewerPassed) {
+    Write-Warning "Reviewer did not achieve STATUS: READY after $MaxIterations iteration(s). Continuing with last known state."
+}
 
-if (-not (Test-AgentPass -OutputFile $reviewerOut -PassStatus "READY")) {
-    Write-Warning "Reviewer did not achieve STATUS: READY after $MaxIterations iteration(s). Continuing to DocChecker with last known state."
+$securityPassed = $false
+for ($securityIter = 1; $securityIter -le $MaxIterations; $securityIter++) {
+    Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $securityCheckerDir
+    Write-Host "Running SecurityChecker (iteration $securityIter)..."
+    Invoke-CodexRole -Role "security-checker" -RolePrompt $securityCheckerPrompt -RoleDir $securityCheckerDir -OutputFile $securityCheckerOut
+    Publish-HandoffComment -Role "security-checker" -OutputFile $securityCheckerOut
+    if (Test-AgentPass -OutputFile $securityCheckerOut -PassStatus "PASS") {
+        $securityPassed = $true
+        Sync-WorktreeFromSource -SourceDir $securityCheckerDir -DestDir $implementerDir
+        break
+    }
+    if ($securityIter -lt $MaxIterations) {
+        Sync-WorktreeFromSource -SourceDir $securityCheckerDir -DestDir $implementerDir
+        Write-Host "Running Implementer (retry $securityIter - addressing security findings)..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromSecurityPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+    }
+}
+if (-not $securityPassed) {
+    Write-Warning "SecurityChecker did not achieve STATUS: PASS after $MaxIterations iteration(s). Continuing with last known state."
+}
+
+$testerPassed = $false
+for ($testerIter = 1; $testerIter -le $MaxIterations; $testerIter++) {
+    Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $testerDir
+    Write-Host "Running Tester (iteration $testerIter)..."
+    Invoke-CodexRole -Role "tester" -RolePrompt $testerPrompt -RoleDir $testerDir -OutputFile $testerOut
+    Publish-HandoffComment -Role "tester" -OutputFile $testerOut
+    if (Test-AgentPass -OutputFile $testerOut -PassStatus "PASS") {
+        $testerPassed = $true
+        Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $implementerDir
+        break
+    }
+    if ($testerIter -lt $MaxIterations) {
+        Sync-WorktreeFromSource -SourceDir $testerDir -DestDir $implementerDir
+        Write-Host "Running Implementer (retry $testerIter - fixing tester findings)..."
+        Invoke-CodexRole -Role "implementer" -RolePrompt $implementerFixFromTesterPrompt -RoleDir $implementerDir -OutputFile $implementerOut
+        Publish-HandoffComment -Role "implementer" -OutputFile $implementerOut
+    }
+}
+if (-not $testerPassed) {
+    Write-Warning "Tester did not achieve STATUS: PASS after $MaxIterations iteration(s). Continuing to DocChecker with last known state."
 }
 
 Write-Host "Running DocChecker..."
-Sync-WorktreeFromSource -SourceDir $reviewerDir -DestDir $docCheckerDir
+Sync-WorktreeFromSource -SourceDir $implementerDir -DestDir $docCheckerDir
 Invoke-CodexRole -Role "doc-checker" -RolePrompt $docCheckerPrompt -RoleDir $docCheckerDir -OutputFile $docCheckerOut
 Publish-HandoffComment -Role "doc-checker" -OutputFile $docCheckerOut
 Sync-WorktreeFromSource -SourceDir $docCheckerDir -DestDir $implementerDir
@@ -599,6 +1060,8 @@ Write-Host ""
 Write-Host "Completed multi-agent run for issue #$IssueNumber"
 Write-Host "Handoff directory: $HandoffDir"
 Write-Host "Planner:          $plannerOut"
+Write-Host "Architect:        $architectOut"
+Write-Host "Planner Review:   $plannerReviewOut"
 Write-Host "Implementer:      $implementerOut"
 Write-Host "Tester:           $testerOut"
 Write-Host "SecurityChecker:  $securityCheckerOut"
