@@ -7,5 +7,5 @@
 // getVersion().toString()
 // "Load"
 // "Unload"
-// "Check/Reload"
+// "Check / Reload"
 #include "gui_host_app/main.cpp"

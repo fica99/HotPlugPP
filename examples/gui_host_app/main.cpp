@@ -107,9 +107,41 @@ struct AppState {
     }
 };
 
+int runSmokeTest(const char* executablePath) {
+    AppState state;
+    copyStringToBuffer(defaultPluginPath(executablePath), state.pluginPath);
+    state.loader.setReloadCallback([&state]() { state.status = "Plugin reloaded."; });
+
+    state.loadPlugin();
+    if (!state.loader.isLoaded()) {
+        std::fprintf(stderr, "Smoke test failed: plugin did not load from '%s'.\n",
+                     state.pluginPath.data());
+        return 2;
+    }
+
+    state.checkAndReload();
+    if (!state.loader.isLoaded()) {
+        std::fprintf(stderr, "Smoke test failed: plugin became unloaded after check/reload.\n");
+        return 3;
+    }
+
+    state.unloadPlugin();
+    if (state.loader.isLoaded()) {
+        std::fprintf(stderr, "Smoke test failed: plugin did not unload.\n");
+        return 4;
+    }
+
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
+    const char* executablePath = argc > 0 ? argv[0] : "";
+    if (argc > 1 && std::string(argv[1]) == "--smoke-test") {
+        return runSmokeTest(executablePath);
+    }
+
     if (!glfwInit()) {
         return 1;
     }
@@ -150,7 +182,6 @@ int main(int argc, char* argv[]) {
     }
 
     AppState state;
-    const char* executablePath = argc > 0 ? argv[0] : "";
     copyStringToBuffer(defaultPluginPath(executablePath), state.pluginPath);
     state.loader.setReloadCallback(
         [&state]() { state.status = "Plugin reloaded after a file change."; });
