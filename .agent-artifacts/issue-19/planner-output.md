@@ -1,49 +1,39 @@
 **Implementation Plan (Issue #19)**
 
 **Scope**
-1. Add/complete a non-terminal GUI host sample using Dear ImGui that demonstrates `load`, `unload`, and manual `check/reload`.
-2. Keep plugin interaction on existing `PluginLoader` API only (no ABI/API changes).
-3. Gate GUI sample behind `HOTPLUGPP_BUILD_GUI_EXAMPLE` and make dependency failures degrade predictably (clear CMake warning + skipped target).
-4. Integrate GUI sample into examples build flow and ensure `sample_plugin` is available at runtime.
-5. Document build/run steps in `README.md` (or docs), including required GUI dependencies.
+1. Add an optional non-terminal GUI host example using Dear ImGui (GLFW + OpenGL backend) under `examples/gui_host_app/`.
+2. Implement interactive controls for `load`, `unload`, and `check/reload` using existing `hotplugpp::PluginLoader`.
+3. Display plugin runtime info in UI: load state, name, version, and status text.
+4. Integrate the GUI example into examples build behind `HOTPLUGPP_BUILD_GUI_EXAMPLE`.
+5. Document configure/build/run steps and dependency behavior when GUI deps are missing.
 
 **Non-Goals**
-1. Production-grade UI/UX styling or advanced GUI architecture.
-2. Multi-backend rendering support beyond the first minimal backend.
-3. Refactoring `PluginLoader` core behavior or public API.
-4. Expanding plugin feature scope beyond status/name/version visibility and basic control flow.
+1. No production-grade UI/UX polish.
+2. No support for multiple renderer/window backends in v1.
+3. No ABI or API changes to plugin contracts or `PluginLoader`.
+4. No refactor of core loading/hot-reload internals.
 
 **File-Level Change List**
-1. `CMakeLists.txt`
-   - Define/confirm `HOTPLUGPP_BUILD_GUI_EXAMPLE` option and examples integration behavior.
-2. `examples/CMakeLists.txt`
-   - Conditionally include GUI sample subdirectory.
-3. `examples/gui_host_app/CMakeLists.txt`
-   - Resolve ImGui/GLFW/OpenGL dependencies.
-   - Add graceful skip/warning path when deps are missing.
-   - Build `gui_host_app`, link `hotplugpp`, copy plugin artifact near executable.
-4. `examples/gui_host_app/main.cpp`
-   - Implement interactive GUI host: plugin path input, `Load`, `Unload`, `Check / Reload`, state + name/version/status rendering.
-5. `examples/gui_host_app.cpp` (if used as compatibility/contract shim)
-   - Keep source-contract compatibility if tests depend on this path.
-6. `README.md` (or `docs/...`)
-   - Add concise GUI sample build/run instructions and option/dependency notes.
-7. `tests/cmake/check_gui_example_*.cmake.in` and `tests/CMakeLists.txt` (Tester phase if needed)
-   - Ensure contract checks match final source/doc paths and expected labels/snippets.
+1. `CMakeLists.txt`: define/propagate `HOTPLUGPP_BUILD_GUI_EXAMPLE` option (default OFF) and keep core build unaffected.
+2. `examples/CMakeLists.txt`: conditionally include GUI sample subdirectory.
+3. `examples/gui_host_app/CMakeLists.txt`: create `gui_host_app` target, validate ImGui/GLFW/OpenGL deps, emit clear warnings and skip target if unavailable, copy `sample_plugin` artifact near executable.
+4. `examples/gui_host_app/main.cpp`: implement ImGui app loop + plugin controls + plugin metadata/status rendering.
+5. `README.md` (or docs page): add GUI sample build/run instructions and dependency notes.
+6. Optional validation-only tests (if missing): `tests/cmake/check_gui_example_*.cmake.in` hooks for source/docs/artifact presence.
 
-**Primary Risks**
-1. GUI dependency discovery varies across environments (`glfw` target names, OpenGL packages).
-2. Runtime plugin path/copy behavior differs by generator/config (`Debug/Release`, single vs multi-config).
-3. Contract tests can become brittle if UI labels/source locations drift.
-4. Platform coverage may be limited initially; define at least one validated platform baseline.
+**Risks**
+1. Dependency discovery differences across platforms (`glfw`, `glfw3`, `glfw3::glfw`) can break target linking.
+2. ImGui checkout path may be invalid or incomplete; must fail predictably with non-fatal warning.
+3. Runtime plugin path resolution may vary by generator/config; copy rules must place plugin beside GUI executable.
+4. OpenGL/GLFW availability in CI may be limited; GUI target must be optional and non-blocking for default pipeline.
 
 **Acceptance Checks**
-1. Configure with GUI OFF: project builds normally, no GUI dependency requirement.
-2. Configure with GUI ON + valid deps: `gui_host_app` target is generated and builds.
-3. Configure with GUI ON + missing deps: CMake emits clear warning and skips GUI target without failing core build.
-4. Runtime smoke: GUI can load/unload/reload `sample_plugin`; UI shows loaded state and plugin name/version.
-5. Existing examples/tests remain passing (or explicitly gated where external deps are absent).
-6. README/docs contain reproducible GUI build/run instructions.
+1. Configure with GUI ON and valid `HOTPLUGPP_IMGUI_DIR`; confirm `gui_host_app` target is generated.
+2. Build succeeds and produces GUI host + sample plugin artifacts.
+3. Run `gui_host_app`; verify buttons perform `load`, `unload`, `check/reload`.
+4. Confirm UI shows plugin state, name, and version when loaded.
+5. Configure with missing GUI deps/path; confirm clear warning and graceful skip without breaking other targets/tests.
+6. Confirm README/docs includes exact configure/build/run instructions.
 
 **DoD Commands**
 ```powershell
@@ -52,16 +42,10 @@ cmake --build build --config Release --parallel
 ctest --test-dir build -C Release --output-on-failure
 cmake -P scripts/check-format.cmake
 ```
-Additional GUI-on validation:
-```powershell
-cmake -S . -B build-gui -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON -DHOTPLUGPP_IMGUI_DIR=<path-to-imgui>
-cmake --build build-gui --config Release --parallel
-ctest --test-dir build-gui -C Release --output-on-failure
-```
 
-- Summary of changes: none (planning stage)
-- Files changed: none
-- Validation commands run: none
-- Remaining assumptions/risks: ImGui checkout path is provided and valid; `glfw3`/OpenGL are discoverable in CI or local baseline; at least one target platform is designated as required GUI validation baseline.
+Summary of changes: none (planning stage)  
+Files changed: none  
+Validation commands run: none  
+Remaining assumptions/risks: ImGui is consumed from an external source tree (`HOTPLUGPP_IMGUI_DIR`), not vendored; at least one local/CI environment has GLFW+OpenGL available for functional GUI execution; optional GUI build path must remain isolated so default non-GUI pipeline stays green.
 
 AGENT_STATUS: {"status":"READY","findings":0}

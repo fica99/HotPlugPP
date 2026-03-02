@@ -190,7 +190,7 @@ int main(int argc, char* argv[]) {
             state.unloadPlugin();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Check / Reload")) {
+        if (ImGui::Button("Check/Reload")) {
             state.checkAndReload();
         }
 
