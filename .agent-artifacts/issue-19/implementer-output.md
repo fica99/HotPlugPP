@@ -1,36 +1,41 @@
-Summary of implementation status for Issue #19:
+**Findings Addressed**
 
-Issue #19 is already implemented in this worktree and aligns with the planner/architect handoffs. I did not need to apply additional code edits.
+1. Reviewer Finding #1 (High): source-contract regression on button label  
+- Fixed `ImGui::Button("Check / Reload")` to match enforced contract in [examples/gui_host_app/main.cpp:224](C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\examples\gui_host_app\main.cpp:224).  
+- Kept compatibility shim snippet aligned in [examples/gui_host_app.cpp:10](C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\examples\gui_host_app.cpp:10).
 
-Files changed:
-- None
+2. Reviewer Finding #2 (Low): missing automated GUI runtime behavior verification  
+- Added optional runtime smoke test path `--smoke-test` in [examples/gui_host_app/main.cpp:110](C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\examples\gui_host_app\main.cpp:110) and [examples/gui_host_app/main.cpp:141](C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\examples\gui_host_app\main.cpp:141).  
+- Registered CTest `gui_example_runtime_smoke` when GUI target exists in [tests/CMakeLists.txt:48](C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\tests\CMakeLists.txt:48).
 
-Validation commands run and results:
-1. `cmake -S . -B build`
-- Result: PASS
-- Notes: Configure succeeded; GoogleTest not found so GTest-based tests were skipped (as expected by current CMake logic).
+**Files Changed**
+- [examples/gui_host_app/main.cpp](C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\examples\gui_host_app\main.cpp)
+- [examples/gui_host_app.cpp](C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\examples\gui_host_app.cpp)
+- [tests/CMakeLists.txt](C:\Users\ficac\Desktop\projects\my\HotPlugPP-implementer-issue-19\tests\CMakeLists.txt)
 
-2. `cmake --build build --config Release --parallel`
-- Result: PASS
-- Notes: Built `hotplugpp`, `host_app`, `sample_plugin`, `math_plugin`.
+**Validation Commands Run And Results**
 
-3. `ctest --test-dir build -C Release --output-on-failure`
-- Result: PASS
-- Notes: 2/2 tests passed:
-  - `gui_example_source_contract`
-  - `gui_example_docs_contract`
+After High fix:
+1. `cmake -S . -B build` -> PASS  
+2. `cmake --build build --config Release --parallel` -> PASS  
+3. `ctest --test-dir build -C Release --output-on-failure` -> PASS  
+4. `cmake -P scripts/check-format.cmake` -> FAIL  
+5. `cmake -P scripts/format-code.cmake` -> PASS  
+6. Re-ran 1-4 -> all PASS
 
-4. `cmake -P scripts/check-format.cmake`
-- Result: PASS
-- Notes: Formatting check passed for all files.
+After Low fix:
+1. `cmake -S . -B build` -> PASS  
+2. `cmake --build build --config Release --parallel` -> PASS  
+3. `ctest --test-dir build -C Release --output-on-failure` -> PASS  
+4. `cmake -P scripts/check-format.cmake` -> FAIL  
+5. `cmake -P scripts/format-code.cmake` -> PASS  
+6. Re-ran 1-4 -> all PASS
 
-Additional issue-specific check:
-5. `cmake -S . -B build-gui-missing -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON`
-- Result: PASS
-- Notes: Correct warning-and-skip behavior confirmed when `HOTPLUGPP_IMGUI_DIR` is unset.
+**Remaining Unresolved Findings**
+- None.
 
-Remaining risks:
-- GUI target/runtime behavior with real ImGui+GLFW+OpenGL dependencies present was not fully built/executed in this run (dependency availability is environment-dependent).
-- GoogleTest-based unit/integration tests did not run because GTest is not installed in this environment.
+**Remaining Risks / Assumptions**
+- `gui_example_runtime_smoke` is conditionally added only when `gui_host_app` is built. In this environment, GUI deps were unavailable, so that test was not executed here.
+- GoogleTest-based suites remain skipped in this environment (GTest not installed).
 
 AGENT_STATUS: {"status":"PASS","findings":0}
