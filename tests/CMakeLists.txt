@@ -43,6 +43,11 @@ if(TARGET gui_host_app AND TARGET sample_plugin)
         NAME gui_example_artifacts
         COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_artifacts.cmake"
     )
+
+    add_test(
+        NAME gui_example_runtime_smoke
+        COMMAND $<TARGET_FILE:gui_host_app> --smoke-test
+    )
 endif()
 
 option(HOTPLUGPP_FETCH_GTEST "Download GoogleTest during configure when it is not installed" OFF)
