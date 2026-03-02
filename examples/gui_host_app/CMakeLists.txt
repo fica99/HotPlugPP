@@ -9,12 +9,27 @@ if(NOT HOTPLUGPP_IMGUI_DIR)
     return()
 endif()
 
-if(NOT EXISTS "${HOTPLUGPP_IMGUI_DIR}/imgui.h"
-   OR NOT EXISTS "${HOTPLUGPP_IMGUI_DIR}/imgui.cpp"
-   OR NOT EXISTS "${HOTPLUGPP_IMGUI_DIR}/backends/imgui_impl_glfw.cpp"
-   OR NOT EXISTS "${HOTPLUGPP_IMGUI_DIR}/backends/imgui_impl_opengl3.cpp")
+set(HOTPLUGPP_GUI_IMGUI_REQUIRED_FILES
+    imgui.h
+    imgui.cpp
+    imgui_draw.cpp
+    imgui_tables.cpp
+    imgui_widgets.cpp
+    backends/imgui_impl_glfw.cpp
+    backends/imgui_impl_opengl3.cpp
+)
+
+set(HOTPLUGPP_GUI_IMGUI_MISSING_FILES)
+foreach(_imgui_file IN LISTS HOTPLUGPP_GUI_IMGUI_REQUIRED_FILES)
+    if(NOT EXISTS "${HOTPLUGPP_IMGUI_DIR}/${_imgui_file}")
+        list(APPEND HOTPLUGPP_GUI_IMGUI_MISSING_FILES "${_imgui_file}")
+    endif()
+endforeach()
+
+if(HOTPLUGPP_GUI_IMGUI_MISSING_FILES)
+    string(JOIN ", " _imgui_missing_text ${HOTPLUGPP_GUI_IMGUI_MISSING_FILES})
     message(WARNING
-        "HOTPLUGPP_BUILD_GUI_EXAMPLE is enabled, but HOTPLUGPP_IMGUI_DIR does not point to a usable Dear ImGui checkout. Skipping gui_host_app."
+        "HOTPLUGPP_BUILD_GUI_EXAMPLE is enabled, but HOTPLUGPP_IMGUI_DIR is missing required Dear ImGui file(s): ${_imgui_missing_text}. Skipping gui_host_app."
     )
     return()
 endif()
