@@ -1,0 +1,52 @@
+set(SKIP_BUILD_DIR "@CMAKE_BINARY_DIR@/gui-skip-contract")
+
+if(EXISTS "${SKIP_BUILD_DIR}")
+    file(REMOVE_RECURSE "${SKIP_BUILD_DIR}")
+endif()
+
+set(CONFIGURE_COMMAND
+    "${CMAKE_COMMAND}"
+    -S "@CMAKE_SOURCE_DIR@"
+    -B "${SKIP_BUILD_DIR}"
+    -G "@CMAKE_GENERATOR@"
+    -DHOTPLUGPP_BUILD_GUI_EXAMPLE=ON
+)
+
+if(NOT "@CMAKE_GENERATOR_PLATFORM@" STREQUAL "")
+    list(APPEND CONFIGURE_COMMAND -A "@CMAKE_GENERATOR_PLATFORM@")
+endif()
+
+if(NOT "@CMAKE_GENERATOR_TOOLSET@" STREQUAL "")
+    list(APPEND CONFIGURE_COMMAND -T "@CMAKE_GENERATOR_TOOLSET@")
+endif()
+
+if(NOT "@CMAKE_BUILD_TYPE@" STREQUAL "")
+    list(APPEND CONFIGURE_COMMAND -DCMAKE_BUILD_TYPE=@CMAKE_BUILD_TYPE@)
+endif()
+
+execute_process(
+    COMMAND ${CONFIGURE_COMMAND}
+    RESULT_VARIABLE CONFIGURE_RESULT
+    OUTPUT_VARIABLE CONFIGURE_STDOUT
+    ERROR_VARIABLE CONFIGURE_STDERR
+)
+
+if(NOT CONFIGURE_RESULT EQUAL 0)
+    message(FATAL_ERROR
+        "Expected GUI-enabled configure to succeed when dependencies are missing.\n"
+        "Exit code: ${CONFIGURE_RESULT}\n"
+        "STDOUT:\n${CONFIGURE_STDOUT}\n"
+        "STDERR:\n${CONFIGURE_STDERR}\n"
+    )
+endif()
+
+set(CONFIGURE_OUTPUT "${CONFIGURE_STDOUT}\n${CONFIGURE_STDERR}")
+string(FIND "${CONFIGURE_OUTPUT}" "HOTPLUGPP_IMGUI_DIR is not set" IMGUI_MISSING_INDEX)
+string(FIND "${CONFIGURE_OUTPUT}" "Skipping gui_host_app" SKIP_TARGET_INDEX)
+if(IMGUI_MISSING_INDEX EQUAL -1 OR SKIP_TARGET_INDEX EQUAL -1)
+    message(FATAL_ERROR
+        "Expected warning about skipping gui_host_app when HOTPLUGPP_IMGUI_DIR is not set.\n"
+        "Missing snippets: 'HOTPLUGPP_IMGUI_DIR is not set' and/or 'Skipping gui_host_app'.\n"
+        "Combined output:\n${CONFIGURE_OUTPUT}\n"
+    )
+endif()

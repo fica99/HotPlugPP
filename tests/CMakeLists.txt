@@ -27,6 +27,11 @@ configure_file(
     "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_artifacts.cmake"
     @ONLY
 )
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/check_gui_example_configure_skip.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_configure_skip.cmake"
+    @ONLY
+)
 
 add_test(
     NAME gui_example_source_contract
@@ -36,6 +41,11 @@ add_test(
 add_test(
     NAME gui_example_docs_contract
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_docs.cmake"
+)
+
+add_test(
+    NAME gui_example_configure_skip_contract
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/cmake/check_gui_example_configure_skip.cmake"
 )
 
 if(TARGET gui_host_app AND TARGET sample_plugin)
