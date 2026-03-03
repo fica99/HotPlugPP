@@ -88,17 +88,14 @@ struct AppState {
             return;
         }
 
-        const bool wasLoaded = loader.isLoaded();
         const bool reloaded = loader.checkAndReload();
 
         if (reloaded) {
-            if (status.empty()) {
-                status = "Plugin reloaded.";
-            }
+            // Status was already set by the reload callback.
             return;
         }
 
-        if (wasLoaded && !loader.isLoaded()) {
+        if (!loader.isLoaded()) {
             status = "Reload failed. The plugin is now unloaded.";
             return;
         }

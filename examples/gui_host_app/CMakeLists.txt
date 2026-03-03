@@ -35,12 +35,12 @@ if(HOTPLUGPP_GUI_IMGUI_MISSING_FILES)
 endif()
 
 find_package(glfw3 QUIET)
-if(TARGET glfw)
-    set(HOTPLUGPP_GUI_GLFW_TARGET glfw)
+if(TARGET glfw3::glfw)
+    set(HOTPLUGPP_GUI_GLFW_TARGET glfw3::glfw)
 elseif(TARGET glfw3)
     set(HOTPLUGPP_GUI_GLFW_TARGET glfw3)
-elseif(TARGET glfw3::glfw)
-    set(HOTPLUGPP_GUI_GLFW_TARGET glfw3::glfw)
+elseif(TARGET glfw)
+    set(HOTPLUGPP_GUI_GLFW_TARGET glfw)
 else()
     message(WARNING
         "HOTPLUGPP_BUILD_GUI_EXAMPLE is enabled, but no glfw target was found via find_package(glfw3). Skipping gui_host_app."
