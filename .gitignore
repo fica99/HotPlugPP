@@ -44,6 +44,8 @@
 build/
 build-*/
 .agent-artifacts/
+**/build/
+**/build-*/
 bin/
 lib/
 
@@ -63,6 +65,12 @@ Makefile
 # IDE files
 .vscode/
 .idea/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.tlog
+*.recipe
+*.lastbuildstate
 *.swp
 *.swo
 *~

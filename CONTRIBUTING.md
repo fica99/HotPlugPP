@@ -225,7 +225,7 @@ Format:
 
 1. **Update documentation** to reflect changes
 2. **Test on multiple platforms** if possible
-3. **Ensure CI passes** (if available)
+3. **Ensure local validation passes**
 4. **Request review** from maintainers
 5. **Address feedback** promptly
 6. **Squash commits** if requested
