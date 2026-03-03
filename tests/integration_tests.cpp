@@ -275,7 +275,7 @@ TEST_F(IntegrationTest, LoadValidAfterInvalidPath) {
     // Try various invalid paths
     EXPECT_FALSE(loader.loadPlugin(""));
     EXPECT_FALSE(loader.loadPlugin("/"));
-    EXPECT_FALSE(loader.loadPlugin("/tmp/nonexistent.so"));
+    EXPECT_FALSE(loader.loadPlugin("/nonexistent/another_plugin.so"));
     
     // Should still be able to load valid plugin
     ASSERT_TRUE(loader.loadPlugin(m_testPluginPath));

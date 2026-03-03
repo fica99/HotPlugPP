@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <thread>
 #include <cstdlib>
@@ -75,16 +76,19 @@ TEST_F(PluginLoaderTest, LoadNonExistentPlugin) {
 }
 
 TEST_F(PluginLoaderTest, LoadInvalidFile) {
-    // Create a temporary invalid file
-    std::string invalidPath = "/tmp/invalid_plugin.so";
-    std::ofstream file(invalidPath);
-    file << "This is not a valid shared library";
-    file.close();
-    
+    // Create a temporary invalid file in the platform temp directory
+    const std::string invalidPath =
+        (std::filesystem::temp_directory_path() / ("invalid_hotplugpp_test" SHARED_LIB_SUFFIX))
+            .string();
+    {
+        std::ofstream file(invalidPath);
+        file << "This is not a valid shared library";
+    }
+
     PluginLoader loader;
     EXPECT_FALSE(loader.loadPlugin(invalidPath));
     EXPECT_FALSE(loader.isLoaded());
-    
+
     std::remove(invalidPath.c_str());
 }
 
