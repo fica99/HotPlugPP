@@ -44,15 +44,13 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 git clone https://github.com/YOUR_USERNAME/HotPlugPP.git
 cd HotPlugPP
 
-# Create a build directory
-mkdir build && cd build
-
 # Configure and build
-cmake ..
-cmake --build .
+cmake -S . -B build
+cmake --build build --config Release --parallel
 
 # Test your changes
-./bin/host_app ./bin/libsample_plugin.so
+./build/bin/Release/host_app.exe ./build/bin/Release/sample_plugin.dll  # Windows
+./build/bin/host_app ./build/bin/libsample_plugin.so                    # Linux/macOS
 ```
 
 ## Coding Standards
