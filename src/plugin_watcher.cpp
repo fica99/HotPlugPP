@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <utility>
 
@@ -46,13 +47,14 @@ std::string normalizeWatchPathString(const fs::path& path) {
     return normalized;
 }
 
-std::chrono::system_clock::time_point getFileModificationTimeForWatch(const std::string& path) {
+// Returns nullopt when the file is inaccessible (does not exist, permission denied, etc.).
+std::optional<std::chrono::system_clock::time_point>
+getFileModificationTimeForWatch(const std::string& path) {
     struct stat statbuf;
     if (stat(path.c_str(), &statbuf) == 0) {
         return std::chrono::system_clock::from_time_t(statbuf.st_mtime);
     }
-
-    return std::chrono::system_clock::time_point{};
+    return std::nullopt;
 }
 
 } // namespace
@@ -64,7 +66,9 @@ struct PluginWatcher::Impl {
     std::thread watcherThread;
     std::mutex mutex;
     std::condition_variable callbackIdle;
-    std::size_t callbacksInFlight = 0;
+    // Always accessed under mutex; declared atomic for additional clarity and
+    // to avoid any potential ordering issues on exotic platforms.
+    std::atomic<std::size_t> callbacksInFlight{0};
     Clock::time_point lastEventTime{};
     std::string watchedPath;
     std::string watchedDirectory;
@@ -255,19 +259,31 @@ bool PluginWatcher::start(const std::string& path) {
 
     try {
         m_impl->watcherThread = std::thread([impl = m_impl.get(), watchedPath]() {
-            auto lastObserved = getFileModificationTimeForWatch(watchedPath);
-            while (!impl->stopRequested.load(std::memory_order_acquire)) {
-                const auto currentObserved = getFileModificationTimeForWatch(watchedPath);
-                if (currentObserved > lastObserved) {
-                    lastObserved = currentObserved;
-                    std::lock_guard<std::mutex> lock(impl->mutex);
-                    impl->lastEventTime = Clock::now();
-                    impl->reloadPending.store(true, std::memory_order_release);
-                } else if (currentObserved != std::chrono::system_clock::time_point{}) {
-                    lastObserved = currentObserved;
-                }
+            try {
+                auto lastObserved = getFileModificationTimeForWatch(watchedPath);
+                while (!impl->stopRequested.load(std::memory_order_acquire)) {
+                    const auto currentObserved = getFileModificationTimeForWatch(watchedPath);
+                    if (currentObserved && lastObserved && *currentObserved > *lastObserved) {
+                        lastObserved = currentObserved;
+                        std::lock_guard<std::mutex> lock(impl->mutex);
+                        impl->lastEventTime = Clock::now();
+                        impl->reloadPending.store(true, std::memory_order_release);
+                    } else if (currentObserved) {
+                        // File is accessible but mtime did not advance (equal or rare
+                        // regression). Keep the reference in sync so a genuine future
+                        // change is still detected correctly.
+                        lastObserved = currentObserved;
+                    }
+                    // If currentObserved is nullopt the file is temporarily inaccessible;
+                    // retain lastObserved so we detect the change once it reappears.
 
-                std::this_thread::sleep_for(kWatchPollInterval);
+                    std::this_thread::sleep_for(kWatchPollInterval);
+                }
+            } catch (const std::exception& ex) {
+                std::cerr << "[hotplugpp] Polling watcher thread exception: " << ex.what()
+                          << std::endl;
+            } catch (...) {
+                std::cerr << "[hotplugpp] Polling watcher thread: unknown exception." << std::endl;
             }
         });
     } catch (const std::exception& ex) {
@@ -289,6 +305,9 @@ bool PluginWatcher::consumeReloadSignal(
     const std::chrono::system_clock::time_point& lastKnownModTime) {
     const bool fileChanged = currentModTime > lastKnownModTime;
 
+    // When the watcher is inactive or has not queued a reload event, fall back
+    // to a direct mtime comparison so the caller still detects changes without
+    // an active watcher (e.g. when the plugin path was rejected at start()).
     if (!m_impl->watchActive.load(std::memory_order_acquire) ||
         !m_impl->reloadPending.load(std::memory_order_acquire)) {
         return fileChanged;
@@ -306,7 +325,11 @@ bool PluginWatcher::consumeReloadSignal(
     }
 
     m_impl->reloadPending.store(false, std::memory_order_release);
-    return fileChanged || currentModTime != std::chrono::system_clock::time_point{};
+
+    // Trust the watcher event: reload if the file exists (non-default mtime),
+    // even when the mtime comparison alone would not indicate a change.
+    const auto kNoModTime = std::chrono::system_clock::time_point{};
+    return fileChanged || currentModTime != kNoModTime;
 }
 
 } // namespace hotplugpp::detail
