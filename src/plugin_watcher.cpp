@@ -324,11 +324,18 @@ bool PluginWatcher::consumeReloadSignal(
         return false;
     }
 
-    m_impl->reloadPending.store(false, std::memory_order_release);
-
     // Trust the watcher event: reload if the file exists (non-default mtime),
     // even when the mtime comparison alone would not indicate a change.
     const auto kNoModTime = std::chrono::system_clock::time_point{};
+
+    // If we don't have a valid mod time yet (e.g. the file is temporarily
+    // missing or inaccessible), keep the pending reload armed so it can be
+    // applied once the file becomes readable.
+    if (currentModTime == kNoModTime) {
+        return false;
+    }
+
+    m_impl->reloadPending.store(false, std::memory_order_release);
     return fileChanged || currentModTime != kNoModTime;
 }
 

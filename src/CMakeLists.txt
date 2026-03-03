@@ -16,7 +16,7 @@ target_link_libraries(hotplugpp PUBLIC
 
 if(HOTPLUGPP_HAS_EFSW)
     if(TARGET ${HOTPLUGPP_EFSW_TARGET})
-        target_link_libraries(hotplugpp PRIVATE ${HOTPLUGPP_EFSW_TARGET})
+        target_link_libraries(hotplugpp PUBLIC ${HOTPLUGPP_EFSW_TARGET})
     endif()
 
     target_compile_definitions(hotplugpp PRIVATE HOTPLUGPP_HAS_EFSW=1)
