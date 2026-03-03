@@ -62,9 +62,28 @@ class PluginLoader {
      */
     void unloadPlugin();
 
+    /**
+     * @brief Result of a checkAndReload() call.
+     *
+     * Distinguishes between "nothing happened", "success", and "failure"
+     * so callers can react differently when a reload attempt fails (e.g. the
+     * plugin binary was corrupt or missing at reload time).
+     */
+    enum class ReloadResult {
+        NoChange,    ///< No reload was necessary (file unchanged or plugin not loaded).
+        Reloaded,    ///< Plugin was successfully reloaded.
+        ReloadFailed ///< File changed but reload attempt failed; plugin is now unloaded.
+    };
+
     /// Apply a queued watcher event or direct file change and reload if necessary.
-    /// @return true if plugin was reloaded, false otherwise
-    bool checkAndReload();
+    ///
+    /// Must be called from the host thread. The background watcher only marks a
+    /// reload as pending; all actual unload/reload work happens here.
+    ///
+    /// @return ReloadResult::Reloaded   if the plugin was successfully reloaded.
+    ///         ReloadResult::ReloadFailed if reload was attempted but failed (plugin unloaded).
+    ///         ReloadResult::NoChange   if no reload was necessary.
+    ReloadResult checkAndReload();
 
     /**
      * @brief Get the loaded plugin instance

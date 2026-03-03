@@ -3,6 +3,7 @@
 #include "plugin_watcher.hpp"
 
 #include <iostream>
+#include <optional>
 #include <utility>
 
 #ifdef _WIN32
@@ -17,13 +18,14 @@ namespace hotplugpp {
 
 namespace {
 
-std::chrono::system_clock::time_point getFileModificationTimeForWatch(const std::string& path) {
+// Returns nullopt when the file is inaccessible (does not exist, permission denied, etc.).
+std::optional<std::chrono::system_clock::time_point>
+getFileModificationTimeForWatch(const std::string& path) {
     struct stat statbuf;
     if (stat(path.c_str(), &statbuf) == 0) {
         return std::chrono::system_clock::from_time_t(statbuf.st_mtime);
     }
-
-    return std::chrono::system_clock::time_point{};
+    return std::nullopt;
 }
 
 } // namespace
@@ -113,12 +115,11 @@ void PluginLoader::unloadPlugin() {
     m_pluginInfo.isLoaded = false;
     m_pluginInfo.createFunc = nullptr;
     m_pluginInfo.destroyFunc = nullptr;
-    m_pluginInfo.instance = nullptr;
 }
 
-bool PluginLoader::checkAndReload() {
+PluginLoader::ReloadResult PluginLoader::checkAndReload() {
     if (!isLoaded()) {
-        return false;
+        return ReloadResult::NoChange;
     }
 
     const auto currentModTime = getFileModificationTime(m_pluginInfo.path);
@@ -132,13 +133,14 @@ bool PluginLoader::checkAndReload() {
             if (m_reloadCallback) {
                 m_reloadCallback();
             }
-            return true;
+            return ReloadResult::Reloaded;
         }
 
         std::cerr << "Failed to reload plugin: " << path << std::endl;
+        return ReloadResult::ReloadFailed;
     }
 
-    return false;
+    return ReloadResult::NoChange;
 }
 
 IPlugin* PluginLoader::getPlugin() const {
@@ -159,7 +161,7 @@ void PluginLoader::setReloadCallback(std::function<void()> callback) {
 
 std::chrono::system_clock::time_point
 PluginLoader::getFileModificationTime(const std::string& path) {
-    return getFileModificationTimeForWatch(path);
+    return getFileModificationTimeForWatch(path).value_or(std::chrono::system_clock::time_point{});
 }
 
 LibraryHandle PluginLoader::loadLibrary(const std::string& path) {
