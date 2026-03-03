@@ -1,4 +1,4 @@
-option(HOTPLUGPP_FETCH_GOOGLETEST "Fetch GoogleTest with FetchContent" OFF)
+option(HOTPLUGPP_FETCH_GOOGLETEST "Fetch GoogleTest with FetchContent" ON)
 
 set(HOTPLUGPP_TEST_SUPPORT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/support")
 
@@ -6,6 +6,15 @@ find_package(GTest CONFIG QUIET)
 
 if(NOT GTest_FOUND AND HOTPLUGPP_FETCH_GOOGLETEST)
     include(FetchContent)
+
+    # Workaround for a CMake 3.30.x bug on Windows: FindPython/Support.cmake tries to
+    # set_property on _Python3_EXECUTABLE_DEBUG before the CACHE entry is created,
+    # which causes a fatal error when googletest's internal_utils.cmake calls
+    # find_package(Python3). Pre-seeding the entry avoids the crash.
+    if(WIN32 AND NOT DEFINED CACHE{_Python3_EXECUTABLE_DEBUG})
+        set(_Python3_EXECUTABLE_DEBUG "" CACHE FILEPATH "CMake 3.30 FindPython workaround" FORCE)
+    endif()
+
     FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
@@ -126,11 +135,6 @@ add_dependencies(hotplugpp_tests test_plugin failing_plugin)
 
 add_test(
     NAME hotplugpp_tests
-    COMMAND ${CMAKE_COMMAND}
-        -DBUILD_DIR=${CMAKE_CURRENT_BINARY_DIR}
-        -DTEST_TARGET=hotplugpp_tests
-        -DTEST_EXECUTABLE=$<TARGET_FILE:hotplugpp_tests>
-        -DTEST_WORKING_DIR=$<TARGET_FILE_DIR:hotplugpp_tests>
-        -DTEST_CONFIG=$<CONFIG>
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/support/run_built_test.cmake
+    COMMAND $<TARGET_FILE:hotplugpp_tests>
+    WORKING_DIRECTORY $<TARGET_FILE_DIR:hotplugpp_tests>
 )

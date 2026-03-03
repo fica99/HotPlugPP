@@ -252,8 +252,7 @@ TEST_F(IntegrationTest, FrequentReloadChecks) {
     
     // Many reload checks (file hasn't changed, so none should trigger)
     for (int i = 0; i < 1000; ++i) {
-        bool reloaded = loader.checkAndReload();
-        EXPECT_FALSE(reloaded);
+        EXPECT_EQ(loader.checkAndReload(), PluginLoader::ReloadResult::NoChange);
     }
     
     // Should still be loaded

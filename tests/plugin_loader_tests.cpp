@@ -256,18 +256,18 @@ TEST_F(PluginLoaderTest, SetReloadCallbackAcceptsLambda) {
 
 TEST_F(PluginLoaderTest, CheckAndReloadWhenNotLoaded) {
     PluginLoader loader;
-    
-    // Should return false and not crash when no plugin is loaded
-    EXPECT_FALSE(loader.checkAndReload());
+
+    // Should return NoChange and not crash when no plugin is loaded
+    EXPECT_EQ(loader.checkAndReload(), PluginLoader::ReloadResult::NoChange);
 }
 
 TEST_F(PluginLoaderTest, CheckAndReloadNoChange) {
     PluginLoader loader;
     ASSERT_TRUE(loader.loadPlugin(m_testPluginPath));
-    
+
     // Wait a bit and check - should not reload since file hasn't changed
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    EXPECT_FALSE(loader.checkAndReload());
+    EXPECT_EQ(loader.checkAndReload(), PluginLoader::ReloadResult::NoChange);
     EXPECT_TRUE(loader.isLoaded());
 }
 
@@ -284,10 +284,11 @@ TEST_F(PluginLoaderTest, CheckAndReloadAfterFileChangeReloadsPluginOnce) {
     ASSERT_TRUE(loader.loadPlugin(pluginCopyPath.string()));
     ASSERT_TRUE(touchPluginFile(pluginCopyPath));
 
+    // Poll for up to 2 seconds: detection (~100ms) + debounce (250ms) + margin.
     bool reloaded = false;
-    for (int attempt = 0; attempt < 10; ++attempt) {
+    for (int attempt = 0; attempt < 20; ++attempt) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (loader.checkAndReload()) {
+        if (loader.checkAndReload() == PluginLoader::ReloadResult::Reloaded) {
             reloaded = true;
             break;
         }
@@ -296,7 +297,7 @@ TEST_F(PluginLoaderTest, CheckAndReloadAfterFileChangeReloadsPluginOnce) {
     EXPECT_TRUE(reloaded);
     EXPECT_EQ(callbackCount, 1);
     EXPECT_TRUE(loader.isLoaded());
-    EXPECT_FALSE(loader.checkAndReload());
+    EXPECT_EQ(loader.checkAndReload(), PluginLoader::ReloadResult::NoChange);
 
     loader.unloadPlugin();
     std::error_code error;
@@ -317,10 +318,11 @@ TEST_F(PluginLoaderTest, CheckAndReloadCoalescesRapidFileChanges) {
     ASSERT_TRUE(touchPluginFile(pluginCopyPath));
     ASSERT_TRUE(touchPluginFile(pluginCopyPath));
 
+    // Poll for up to 2 seconds: detection (~100ms) + debounce (250ms) + margin.
     bool reloaded = false;
-    for (int attempt = 0; attempt < 10; ++attempt) {
+    for (int attempt = 0; attempt < 20; ++attempt) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (loader.checkAndReload()) {
+        if (loader.checkAndReload() == PluginLoader::ReloadResult::Reloaded) {
             reloaded = true;
             break;
         }
@@ -329,7 +331,7 @@ TEST_F(PluginLoaderTest, CheckAndReloadCoalescesRapidFileChanges) {
     EXPECT_TRUE(reloaded);
     EXPECT_EQ(callbackCount, 1);
     EXPECT_TRUE(loader.isLoaded());
-    EXPECT_FALSE(loader.checkAndReload());
+    EXPECT_EQ(loader.checkAndReload(), PluginLoader::ReloadResult::NoChange);
 
     loader.unloadPlugin();
     std::error_code error;
@@ -350,10 +352,11 @@ TEST_F(PluginLoaderTest, CheckAndReloadWorksWhenWatcherRejectsThePath) {
     ASSERT_TRUE(loader.isLoaded());
     ASSERT_TRUE(touchPluginFile(pluginCopyPath));
 
+    // Poll for up to 2 seconds: detection via mtime polling (~100ms) + margin.
     bool reloaded = false;
-    for (int attempt = 0; attempt < 10; ++attempt) {
+    for (int attempt = 0; attempt < 20; ++attempt) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (loader.checkAndReload()) {
+        if (loader.checkAndReload() == PluginLoader::ReloadResult::Reloaded) {
             reloaded = true;
             break;
         }
