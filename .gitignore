@@ -43,6 +43,7 @@
 # Build directories
 build/
 build-*/
+.agent-artifacts/
 **/build/
 **/build-*/
 bin/
@@ -59,6 +60,7 @@ Makefile
 !check-format.cmake
 !find-clang-format.cmake
 !find-source-files.cmake
+!tests/support/run_built_test.cmake
 
 # IDE files
 .vscode/
@@ -78,5 +80,4 @@ _codeql_detected_source_root
 _codeql_build_dir/
 .codeql/
 .codeql-cache/
-.codeql-cache-*/
 .codeql-cache-*/

@@ -44,15 +44,28 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 git clone https://github.com/YOUR_USERNAME/HotPlugPP.git
 cd HotPlugPP
 
-# Create a build directory
-mkdir build && cd build
+# Configure
+cmake -S . -B build
 
-# Configure and build
-cmake ..
-cmake --build .
+# Build the example targets you want to run
+cmake --build build --config Release --target build_host_app build_sample_plugin
 
 # Test your changes
-./bin/host_app ./bin/libsample_plugin.so
+./build/bin/host_app ./build/bin/libsample_plugin.so
+```
+
+Examples and tests are configured with `EXCLUDE_FROM_ALL`, so they must be built explicitly by target name.
+
+If you need to exercise the polling watcher instead of `efsw`, configure with:
+
+```bash
+cmake -S . -B build -DHOTPLUGPP_USE_EFSW=OFF
+```
+
+If you want to keep `HOTPLUGPP_USE_EFSW=ON` and rely only on an installed `efsw` package (without network fetch), configure with:
+
+```bash
+cmake -S . -B build -DHOTPLUGPP_FETCH_EFSW=OFF
 ```
 
 ## Coding Standards
@@ -158,28 +171,36 @@ private:
 ### Running Tests
 
 ```bash
-# Build and run examples
-cd build
-cmake --build .
+# Configure
+cmake -S . -B build
+
+# Build and run the consolidated test target
+cmake --build build --config Release --target build_hotplugpp_tests
+ctest --test-dir build -C Release --output-on-failure
 
 # Test sample plugin
-./bin/host_app ./bin/libsample_plugin.so
+cmake --build build --config Release --target build_host_app build_sample_plugin
+./build/bin/host_app ./build/bin/libsample_plugin.so
 
 # Test math plugin
-./bin/host_app ./bin/libmath_plugin.so
+cmake --build build --config Release --target build_host_app build_math_plugin
+./build/bin/host_app ./build/bin/libmath_plugin.so
 
 # Test hot-reload
 # 1. Start host_app with a plugin
 # 2. Modify the plugin source
 # 3. Rebuild the plugin
-# 4. Verify hot-reload occurs
+# 4. Verify one reload is applied after checkAndReload() runs
 ```
+
+The test build prefers an installed `GTest` package, falls back to the bundled test shim when GTest is unavailable, and can fetch GoogleTest explicitly with `-DHOTPLUGPP_FETCH_GOOGLETEST=ON` when you want the upstream framework.
 
 ## Documentation
 
 - **Code comments**: Document public APIs
-- **README**: Update if adding major features
+- **README**: Update for user-visible build, runtime, or behavioral changes
 - **Wiki**: Update Wiki for interface changes or new features
+- **docs/**: Add or update focused guides when a feature changes setup or verification steps
 
 ## Commit Messages
 

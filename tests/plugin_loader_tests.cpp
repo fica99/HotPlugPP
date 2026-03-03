@@ -1,13 +1,55 @@
 #include "hotplugpp/plugin_loader.hpp"
 
-#include <gtest/gtest.h>
 #include <chrono>
-#include <fstream>
-#include <thread>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <gtest/gtest.h>
+#include <thread>
 
 namespace hotplugpp {
 namespace tests {
+
+namespace fs = std::filesystem;
+
+namespace {
+
+std::string getDefinitelyMissingPluginPath() {
+    return (fs::temp_directory_path() / "hotplugpp_missing_plugin" / "missing_plugin.bin").string();
+}
+
+std::string getInvalidPluginPath() {
+    return (fs::temp_directory_path() / "hotplugpp_invalid_plugin.bin").string();
+}
+
+fs::path makePluginCopyForReloadTest(const std::string& sourcePath,
+                                    const std::string& suffix = SHARED_LIB_SUFFIX) {
+    const auto uniqueId =
+        std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    const fs::path copyPath =
+        fs::temp_directory_path() / ("hotplugpp_reload_test_" + uniqueId + suffix);
+
+    std::error_code error;
+    fs::copy_file(sourcePath, copyPath, fs::copy_options::overwrite_existing, error);
+    if (error) {
+        return {};
+    }
+
+    return copyPath;
+}
+
+bool touchPluginFile(const fs::path& path) {
+    std::error_code error;
+    const auto currentWriteTime = fs::last_write_time(path, error);
+    if (error) {
+        return false;
+    }
+
+    fs::last_write_time(path, currentWriteTime + std::chrono::seconds(1), error);
+    return !error;
+}
+
+} // namespace
 
 class PluginLoaderTest : public ::testing::Test {
   protected:
@@ -70,13 +112,13 @@ TEST_F(PluginLoaderTest, LoadPluginSetsPath) {
 
 TEST_F(PluginLoaderTest, LoadNonExistentPlugin) {
     PluginLoader loader;
-    EXPECT_FALSE(loader.loadPlugin("/nonexistent/path/plugin.so"));
+    EXPECT_FALSE(loader.loadPlugin(getDefinitelyMissingPluginPath()));
     EXPECT_FALSE(loader.isLoaded());
 }
 
 TEST_F(PluginLoaderTest, LoadInvalidFile) {
     // Create a temporary invalid file
-    std::string invalidPath = "/tmp/invalid_plugin.so";
+    std::string invalidPath = getInvalidPluginPath();
     std::ofstream file(invalidPath);
     file << "This is not a valid shared library";
     file.close();
@@ -214,19 +256,119 @@ TEST_F(PluginLoaderTest, SetReloadCallbackAcceptsLambda) {
 
 TEST_F(PluginLoaderTest, CheckAndReloadWhenNotLoaded) {
     PluginLoader loader;
-    
-    // Should return false and not crash when no plugin is loaded
-    EXPECT_FALSE(loader.checkAndReload());
+
+    // Should return NoChange and not crash when no plugin is loaded
+    EXPECT_EQ(loader.checkAndReload(), PluginLoader::ReloadResult::NoChange);
 }
 
 TEST_F(PluginLoaderTest, CheckAndReloadNoChange) {
     PluginLoader loader;
     ASSERT_TRUE(loader.loadPlugin(m_testPluginPath));
-    
+
     // Wait a bit and check - should not reload since file hasn't changed
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    EXPECT_FALSE(loader.checkAndReload());
+    EXPECT_EQ(loader.checkAndReload(), PluginLoader::ReloadResult::NoChange);
     EXPECT_TRUE(loader.isLoaded());
+}
+
+TEST_F(PluginLoaderTest, CheckAndReloadAfterFileChangeReloadsPluginOnce) {
+    const fs::path pluginCopyPath = makePluginCopyForReloadTest(m_testPluginPath);
+    ASSERT_FALSE(pluginCopyPath.empty());
+
+    PluginLoader loader;
+    int callbackCount = 0;
+    loader.setReloadCallback([&callbackCount]() {
+        ++callbackCount;
+    });
+
+    ASSERT_TRUE(loader.loadPlugin(pluginCopyPath.string()));
+    ASSERT_TRUE(touchPluginFile(pluginCopyPath));
+
+    // Poll for up to 2 seconds: detection (~100ms) + debounce (250ms) + margin.
+    bool reloaded = false;
+    for (int attempt = 0; attempt < 20; ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (loader.checkAndReload() == PluginLoader::ReloadResult::Reloaded) {
+            reloaded = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(reloaded);
+    EXPECT_EQ(callbackCount, 1);
+    EXPECT_TRUE(loader.isLoaded());
+    EXPECT_EQ(loader.checkAndReload(), PluginLoader::ReloadResult::NoChange);
+
+    loader.unloadPlugin();
+    std::error_code error;
+    fs::remove(pluginCopyPath, error);
+}
+
+TEST_F(PluginLoaderTest, CheckAndReloadCoalescesRapidFileChanges) {
+    const fs::path pluginCopyPath = makePluginCopyForReloadTest(m_testPluginPath);
+    ASSERT_FALSE(pluginCopyPath.empty());
+
+    PluginLoader loader;
+    int callbackCount = 0;
+    loader.setReloadCallback([&callbackCount]() {
+        ++callbackCount;
+    });
+
+    ASSERT_TRUE(loader.loadPlugin(pluginCopyPath.string()));
+    ASSERT_TRUE(touchPluginFile(pluginCopyPath));
+    ASSERT_TRUE(touchPluginFile(pluginCopyPath));
+
+    // Poll for up to 2 seconds: detection (~100ms) + debounce (250ms) + margin.
+    bool reloaded = false;
+    for (int attempt = 0; attempt < 20; ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (loader.checkAndReload() == PluginLoader::ReloadResult::Reloaded) {
+            reloaded = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(reloaded);
+    EXPECT_EQ(callbackCount, 1);
+    EXPECT_TRUE(loader.isLoaded());
+    EXPECT_EQ(loader.checkAndReload(), PluginLoader::ReloadResult::NoChange);
+
+    loader.unloadPlugin();
+    std::error_code error;
+    fs::remove(pluginCopyPath, error);
+}
+
+TEST_F(PluginLoaderTest, CheckAndReloadWorksWhenWatcherRejectsThePath) {
+    const fs::path pluginCopyPath = makePluginCopyForReloadTest(m_testPluginPath, ".bin");
+    ASSERT_FALSE(pluginCopyPath.empty());
+
+    PluginLoader loader;
+    int callbackCount = 0;
+    loader.setReloadCallback([&callbackCount]() {
+        ++callbackCount;
+    });
+
+    ASSERT_TRUE(loader.loadPlugin(pluginCopyPath.string()));
+    ASSERT_TRUE(loader.isLoaded());
+    ASSERT_TRUE(touchPluginFile(pluginCopyPath));
+
+    // Poll for up to 2 seconds: detection via mtime polling (~100ms) + margin.
+    bool reloaded = false;
+    for (int attempt = 0; attempt < 20; ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (loader.checkAndReload() == PluginLoader::ReloadResult::Reloaded) {
+            reloaded = true;
+            break;
+        }
+    }
+
+    EXPECT_TRUE(reloaded);
+    EXPECT_EQ(callbackCount, 1);
+    EXPECT_TRUE(loader.isLoaded());
+
+    loader.unloadPlugin();
+    std::error_code error;
+    fs::remove(pluginCopyPath, error);
 }
 
 // ============================================================================
@@ -269,7 +411,7 @@ TEST_F(PluginLoaderTest, LoadAfterFailedLoad) {
     PluginLoader loader;
     
     // First, try to load a non-existent plugin
-    EXPECT_FALSE(loader.loadPlugin("/nonexistent/plugin.so"));
+    EXPECT_FALSE(loader.loadPlugin(getDefinitelyMissingPluginPath()));
     EXPECT_FALSE(loader.isLoaded());
     
     // Then load a valid plugin

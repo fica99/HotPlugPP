@@ -2,11 +2,22 @@
 
 #include <gtest/gtest.h>
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <thread>
 
 namespace hotplugpp {
 namespace tests {
+
+namespace fs = std::filesystem;
+
+namespace {
+
+std::string getDefinitelyMissingPluginPath() {
+    return (fs::temp_directory_path() / "hotplugpp_missing_plugin" / "missing_plugin.bin").string();
+}
+
+} // namespace
 
 class IntegrationTest : public ::testing::Test {
   protected:
@@ -241,8 +252,7 @@ TEST_F(IntegrationTest, FrequentReloadChecks) {
     
     // Many reload checks (file hasn't changed, so none should trigger)
     for (int i = 0; i < 1000; ++i) {
-        bool reloaded = loader.checkAndReload();
-        EXPECT_FALSE(reloaded);
+        EXPECT_EQ(loader.checkAndReload(), PluginLoader::ReloadResult::NoChange);
     }
     
     // Should still be loaded
@@ -257,7 +267,7 @@ TEST_F(IntegrationTest, RecoverFromFailedLoad) {
     PluginLoader loader;
     
     // First, try to load a non-existent plugin
-    EXPECT_FALSE(loader.loadPlugin("/nonexistent/plugin.so"));
+    EXPECT_FALSE(loader.loadPlugin(getDefinitelyMissingPluginPath()));
     EXPECT_FALSE(loader.isLoaded());
     
     // Then load a valid plugin
@@ -274,8 +284,8 @@ TEST_F(IntegrationTest, LoadValidAfterInvalidPath) {
     
     // Try various invalid paths
     EXPECT_FALSE(loader.loadPlugin(""));
-    EXPECT_FALSE(loader.loadPlugin("/"));
-    EXPECT_FALSE(loader.loadPlugin("/tmp/nonexistent.so"));
+    EXPECT_FALSE(loader.loadPlugin(fs::temp_directory_path().root_path().string()));
+    EXPECT_FALSE(loader.loadPlugin(getDefinitelyMissingPluginPath()));
     
     // Should still be able to load valid plugin
     ASSERT_TRUE(loader.loadPlugin(m_testPluginPath));

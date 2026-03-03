@@ -1,6 +1,9 @@
 #include "hotplugpp/plugin_loader.hpp"
 
+#include "plugin_watcher.hpp"
+
 #include <iostream>
+#include <optional>
 #include <utility>
 
 #ifdef _WIN32
@@ -13,19 +16,31 @@
 
 namespace hotplugpp {
 
-PluginLoader::PluginLoader() = default;
+namespace {
+
+// Returns nullopt when the file is inaccessible (does not exist, permission denied, etc.).
+std::optional<std::chrono::system_clock::time_point>
+getFileModificationTimeForWatch(const std::string& path) {
+    struct stat statbuf;
+    if (stat(path.c_str(), &statbuf) == 0) {
+        return std::chrono::system_clock::from_time_t(statbuf.st_mtime);
+    }
+    return std::nullopt;
+}
+
+} // namespace
+
+PluginLoader::PluginLoader() : m_watcher(std::make_unique<detail::PluginWatcher>()) {}
 
 PluginLoader::~PluginLoader() {
     unloadPlugin();
 }
 
 bool PluginLoader::loadPlugin(const std::string& path) {
-    // Unload existing plugin if any
     if (isLoaded()) {
         unloadPlugin();
     }
 
-    // Load the shared library
     LibraryHandle handle = loadLibrary(path);
     if (!handle) {
         std::cerr << "Failed to load library: " << path << std::endl;
@@ -33,7 +48,6 @@ bool PluginLoader::loadPlugin(const std::string& path) {
         return false;
     }
 
-    // Get the factory functions
     CreatePluginFunc createFunc = reinterpret_cast<CreatePluginFunc>(
         getFunction(handle, "createPlugin"));
     DestroyPluginFunc destroyFunc = reinterpret_cast<DestroyPluginFunc>(
@@ -46,7 +60,6 @@ bool PluginLoader::loadPlugin(const std::string& path) {
         return false;
     }
 
-    // Create plugin instance
     IPlugin* plugin = createFunc();
     if (!plugin) {
         std::cerr << "Failed to create plugin instance from: " << path << std::endl;
@@ -54,7 +67,6 @@ bool PluginLoader::loadPlugin(const std::string& path) {
         return false;
     }
 
-    // Initialize plugin
     if (!plugin->onLoad()) {
         std::cerr << "Plugin initialization failed: " << path << std::endl;
         destroyFunc(plugin);
@@ -62,7 +74,6 @@ bool PluginLoader::loadPlugin(const std::string& path) {
         return false;
     }
 
-    // Store plugin info
     m_pluginInfo.path = path;
     m_pluginInfo.handle = handle;
     m_pluginInfo.instance = plugin;
@@ -70,6 +81,10 @@ bool PluginLoader::loadPlugin(const std::string& path) {
     m_pluginInfo.destroyFunc = destroyFunc;
     m_pluginInfo.lastModified = getFileModificationTime(path);
     m_pluginInfo.isLoaded = true;
+
+    if (!m_watcher->start(path)) {
+        std::cerr << "Continuing without file watcher for: " << path << std::endl;
+    }
 
     std::cout << "Plugin loaded successfully: " << plugin->getName() << " v"
               << plugin->getVersion().toString() << std::endl;
@@ -82,18 +97,16 @@ void PluginLoader::unloadPlugin() {
         return;
     }
 
-    // Call plugin cleanup
+    m_watcher->stop();
+
     if (m_pluginInfo.instance) {
         m_pluginInfo.instance->onUnload();
-
-        // Destroy plugin instance
         if (m_pluginInfo.destroyFunc) {
             m_pluginInfo.destroyFunc(m_pluginInfo.instance);
         }
         m_pluginInfo.instance = nullptr;
     }
 
-    // Unload library
     if (m_pluginInfo.handle) {
         unloadLibrary(m_pluginInfo.handle);
         m_pluginInfo.handle = nullptr;
@@ -104,31 +117,30 @@ void PluginLoader::unloadPlugin() {
     m_pluginInfo.destroyFunc = nullptr;
 }
 
-bool PluginLoader::checkAndReload() {
+PluginLoader::ReloadResult PluginLoader::checkAndReload() {
     if (!isLoaded()) {
-        return false;
+        return ReloadResult::NoChange;
     }
 
-    auto currentModTime = getFileModificationTime(m_pluginInfo.path);
-
-    // Check if file has been modified
-    if (currentModTime > m_pluginInfo.lastModified) {
+    const auto currentModTime = getFileModificationTime(m_pluginInfo.path);
+    if (m_watcher->consumeReloadSignal(currentModTime, m_pluginInfo.lastModified)) {
         std::cout << "Plugin file modified, reloading..." << std::endl;
 
-        std::string path = m_pluginInfo.path;
+        const std::string path = m_pluginInfo.path;
         unloadPlugin();
 
         if (loadPlugin(path)) {
             if (m_reloadCallback) {
                 m_reloadCallback();
             }
-            return true;
-        } else {
-            std::cerr << "Failed to reload plugin: " << path << std::endl;
+            return ReloadResult::Reloaded;
         }
+
+        std::cerr << "Failed to reload plugin: " << path << std::endl;
+        return ReloadResult::ReloadFailed;
     }
 
-    return false;
+    return ReloadResult::NoChange;
 }
 
 IPlugin* PluginLoader::getPlugin() const {
@@ -149,11 +161,7 @@ void PluginLoader::setReloadCallback(std::function<void()> callback) {
 
 std::chrono::system_clock::time_point
 PluginLoader::getFileModificationTime(const std::string& path) {
-    struct stat statbuf;
-    if (stat(path.c_str(), &statbuf) == 0) {
-        return std::chrono::system_clock::from_time_t(statbuf.st_mtime);
-    }
-    return std::chrono::system_clock::time_point();
+    return getFileModificationTimeForWatch(path).value_or(std::chrono::system_clock::time_point{});
 }
 
 LibraryHandle PluginLoader::loadLibrary(const std::string& path) {
