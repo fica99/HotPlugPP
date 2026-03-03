@@ -15,11 +15,18 @@ target_link_libraries(hotplugpp PUBLIC
 )
 
 if(HOTPLUGPP_HAS_EFSW)
-    if(HOTPLUGPP_EFSW_TARGET)
+    if(TARGET ${HOTPLUGPP_EFSW_TARGET})
         target_link_libraries(hotplugpp PRIVATE ${HOTPLUGPP_EFSW_TARGET})
     endif()
 
     target_compile_definitions(hotplugpp PRIVATE HOTPLUGPP_HAS_EFSW=1)
+endif()
+
+# Platform-specific preprocessor definitions (private: not exposed to consumers).
+if(WIN32)
+    target_compile_definitions(hotplugpp PRIVATE HOTPLUGPP_PLATFORM_WINDOWS)
+elseif(UNIX)
+    target_compile_definitions(hotplugpp PRIVATE HOTPLUGPP_PLATFORM_UNIX)
 endif()
 
 # Link platform-specific libraries

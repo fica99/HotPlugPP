@@ -1,70 +1,42 @@
+# Platform-specific plugin suffix/prefix (shared between all plugin targets below).
+if(WIN32)
+    set(HOTPLUGPP_EXAMPLE_PLUGIN_PREFIX "")
+    set(HOTPLUGPP_EXAMPLE_PLUGIN_SUFFIX ".dll")
+elseif(APPLE)
+    set(HOTPLUGPP_EXAMPLE_PLUGIN_PREFIX "lib")
+    set(HOTPLUGPP_EXAMPLE_PLUGIN_SUFFIX ".dylib")
+else()
+    set(HOTPLUGPP_EXAMPLE_PLUGIN_PREFIX "lib")
+    set(HOTPLUGPP_EXAMPLE_PLUGIN_SUFFIX ".so")
+endif()
+
 # Sample Plugin (shared library)
 add_library(sample_plugin SHARED
     sample_plugin/sample_plugin.cpp
 )
-set_target_properties(sample_plugin PROPERTIES
-    EXCLUDE_FROM_ALL ON
-)
-
 target_include_directories(sample_plugin PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
-
-# Set output name to match platform conventions
 set_target_properties(sample_plugin PROPERTIES
-    PREFIX ""
+    EXCLUDE_FROM_ALL ON
+    PREFIX "${HOTPLUGPP_EXAMPLE_PLUGIN_PREFIX}"
     OUTPUT_NAME "sample_plugin"
+    SUFFIX "${HOTPLUGPP_EXAMPLE_PLUGIN_SUFFIX}"
 )
-
-if(WIN32)
-    set_target_properties(sample_plugin PROPERTIES
-        SUFFIX ".dll"
-    )
-elseif(APPLE)
-    set_target_properties(sample_plugin PROPERTIES
-        PREFIX "lib"
-        SUFFIX ".dylib"
-    )
-else()
-    set_target_properties(sample_plugin PROPERTIES
-        PREFIX "lib"
-        SUFFIX ".so"
-    )
-endif()
 
 # Math Plugin (shared library)
 add_library(math_plugin SHARED
     math_plugin/math_plugin.cpp
 )
-set_target_properties(math_plugin PROPERTIES
-    EXCLUDE_FROM_ALL ON
-)
-
 target_include_directories(math_plugin PRIVATE
     ${CMAKE_SOURCE_DIR}/include
 )
-
-# Set output name to match platform conventions
 set_target_properties(math_plugin PROPERTIES
-    PREFIX ""
+    EXCLUDE_FROM_ALL ON
+    PREFIX "${HOTPLUGPP_EXAMPLE_PLUGIN_PREFIX}"
     OUTPUT_NAME "math_plugin"
+    SUFFIX "${HOTPLUGPP_EXAMPLE_PLUGIN_SUFFIX}"
 )
-
-if(WIN32)
-    set_target_properties(math_plugin PROPERTIES
-        SUFFIX ".dll"
-    )
-elseif(APPLE)
-    set_target_properties(math_plugin PROPERTIES
-        PREFIX "lib"
-        SUFFIX ".dylib"
-    )
-else()
-    set_target_properties(math_plugin PROPERTIES
-        PREFIX "lib"
-        SUFFIX ".so"
-    )
-endif()
 
 # Host Application
 add_executable(host_app
