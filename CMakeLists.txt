@@ -17,18 +17,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Platform-specific settings
-if(WIN32)
-    add_definitions(-DHOTPLUGPP_PLATFORM_WINDOWS)
-elseif(UNIX)
-    add_definitions(-DHOTPLUGPP_PLATFORM_UNIX)
-endif()
-
 # Enable position independent code for shared libraries
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-# Include directories
-include_directories(${CMAKE_SOURCE_DIR}/include)
 
 option(HOTPLUGPP_BUILD_GUI_EXAMPLE "Build the optional GUI host example"
        OFF)
