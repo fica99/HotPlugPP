@@ -170,6 +170,58 @@ function Get-WorktreeSyncFailureDetails {
     return (($parts | Where-Object { $_ -and $_.Trim() }) -join "`n`n").Trim()
 }
 
+function Get-GeneratedArtifactPathspecs {
+    return @(
+        ":(glob)**/build/**",
+        ":(glob)**/build-*/**",
+        ":(glob)**/CMakeFiles/**",
+        ":(glob)**/CMakeCache.txt",
+        ":(glob)**/Testing/Temporary/**",
+        ":(glob)**/*.sln",
+        ":(glob)**/*.vcxproj",
+        ":(glob)**/*.vcxproj.filters",
+        ":(glob)**/*.tlog/**",
+        ":(glob)**/*.recipe",
+        ":(glob)**/*.lastbuildstate"
+    )
+}
+
+function Remove-GeneratedArtifacts {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$WorktreeDir,
+        [string]$Context = "worktree"
+    )
+
+    $artifactPathspecs = Get-GeneratedArtifactPathspecs
+
+    $rmArtifactsResult = Invoke-GitCapture -ArgumentList (@("-C", $WorktreeDir, "rm", "-r", "-f", "--ignore-unmatch", "--") + $artifactPathspecs)
+    if ($rmArtifactsResult.ExitCode -ne 0) {
+        throw "Failed to prune tracked build artifacts from $Context '$WorktreeDir': $(Get-ProcessFailureDetails -Result $rmArtifactsResult)"
+    }
+
+    $cleanArtifactsResult = Invoke-GitCapture -ArgumentList (@("-C", $WorktreeDir, "clean", "-fd", "--") + $artifactPathspecs)
+    if ($cleanArtifactsResult.ExitCode -ne 0) {
+        throw "Failed to prune untracked build artifacts from $Context '$WorktreeDir': $(Get-ProcessFailureDetails -Result $cleanArtifactsResult)"
+    }
+}
+
+function Ensure-NoInProgressMerge {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$WorktreeDir,
+        [string]$Context = "worktree"
+    )
+
+    $mergeHeadResult = Invoke-GitCapture -ArgumentList @("-C", $WorktreeDir, "rev-parse", "-q", "--verify", "MERGE_HEAD")
+    if ($mergeHeadResult.ExitCode -eq 0) {
+        $abortResult = Invoke-GitCapture -ArgumentList @("-C", $WorktreeDir, "merge", "--abort")
+        if ($abortResult.ExitCode -ne 0) {
+            throw "Failed to abort in-progress merge in $Context '$WorktreeDir': $(Get-ProcessFailureDetails -Result $abortResult)"
+        }
+    }
+}
+
 function Resolve-CommandPath {
     param(
         [Parameter(Mandatory = $true)]
@@ -412,6 +464,10 @@ function Sync-WorktreeFromSource {
         [Parameter(Mandatory = $true)]
         [string]$DestDir
     )
+    Ensure-NoInProgressMerge -WorktreeDir $DestDir -Context "destination"
+    Remove-GeneratedArtifacts -WorktreeDir $SourceDir -Context "source"
+    Remove-GeneratedArtifacts -WorktreeDir $DestDir -Context "destination"
+
     $statusResult = Invoke-GitCapture -ArgumentList @("-C", $SourceDir, "status", "--porcelain")
     if ($statusResult.ExitCode -ne 0) {
         throw "Failed to inspect git status in '$SourceDir': $($statusResult.StdErr)"
@@ -453,7 +509,9 @@ function Sync-WorktreeFromSource {
         throw "Worktree sync fetch from '$SourceDir' to '$DestDir' failed. $(Get-ProcessFailureDetails -Result $fetchResult)"
     }
 
-    $mergeResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "merge", "FETCH_HEAD", "--no-edit")
+    # Source worktree is authoritative during role-to-role promotion.
+    # Auto-resolve textual conflicts in favor of FETCH_HEAD to keep orchestration non-interactive.
+    $mergeResult = Invoke-GitCapture -ArgumentList @("-C", $DestDir, "merge", "FETCH_HEAD", "--no-edit", "-X", "theirs")
     if ($mergeResult.ExitCode -ne 0) {
         throw "Worktree sync from '$SourceDir' to '$DestDir' encountered issues: $(Get-WorktreeSyncFailureDetails -DestDir $DestDir -Result $mergeResult)"
     }
@@ -809,6 +867,9 @@ function Publish-PullRequest {
 
     $implBranch = $branchResult.StdOut
     if ($implBranch -and $implBranch -ne "HEAD") {
+        # Ensure final PR contains only source changes and no generated build artifacts.
+        Remove-GeneratedArtifacts -WorktreeDir $implementerDir -Context "implementer"
+
         $statusResult = Invoke-GitCapture -ArgumentList @("-C", $implementerDir, "status", "--porcelain")
         if ($statusResult.ExitCode -ne 0) {
             throw "Failed to inspect implementer worktree status: $(Get-ProcessFailureDetails -Result $statusResult)"
@@ -840,14 +901,11 @@ function Publish-PullRequest {
             )
             if ($prResult.ExitCode -eq 0) {
                 Write-Host "PR created: $($prResult.StdOut)"
-                $mergeResult = Invoke-ProcessCapture -FilePath $script:GhCommand -ArgumentList @("pr", "merge", "--auto", "--squash")
-                if ($mergeResult.ExitCode -ne 0) {
-                    throw "PR was created but auto-merge could not be enabled: $(Get-ProcessFailureDetails -Result $mergeResult)"
-                }
-                Write-Host "Auto-merge enabled."
             } else {
                 Write-Warning "PR creation failed (PR may already exist). Output: $(Get-ProcessFailureDetails -Result $prResult)"
             }
+
+            Write-Host "Auto-merge is disabled. PR left open for manual review and merge."
         }
     }
 }

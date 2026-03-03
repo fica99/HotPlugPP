@@ -42,9 +42,9 @@
 
 # Build directories
 build/
-build-gui-*/
-build-impl/
-build-review*/
+build-*/
+**/build/
+**/build-*/
 bin/
 lib/
 
@@ -63,6 +63,12 @@ Makefile
 # IDE files
 .vscode/
 .idea/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.tlog
+*.recipe
+*.lastbuildstate
 *.swp
 *.swo
 *~
