@@ -60,7 +60,7 @@ if(TARGET gui_host_app AND TARGET sample_plugin)
     )
 endif()
 
-option(HOTPLUGPP_FETCH_GTEST "Download GoogleTest during configure when it is not installed" OFF)
+option(HOTPLUGPP_FETCH_GTEST "Download GoogleTest during configure when it is not installed" ON)
 
 find_package(GTest CONFIG QUIET)
 
