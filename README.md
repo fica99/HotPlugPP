@@ -30,17 +30,31 @@ Examples and tests are configured with `EXCLUDE_FROM_ALL`, so they are not built
 
 ## Watcher Configuration
 
-HotPlugPP now starts a background file watcher automatically after `loadPlugin()` succeeds.
+HotPlugPP starts a background file watcher automatically after `loadPlugin()` succeeds.
 
 - `HOTPLUGPP_USE_EFSW=ON` enables `efsw` integration when an installed package or fetched source is available.
 - `HOTPLUGPP_FETCH_EFSW=ON` allows CMake to fetch `efsw` with `FetchContent` when it is not already installed.
-- If `efsw` is unavailable or the fetch probe cannot reach the source, HotPlugPP logs a status message and keeps hot-reload enabled by using the built-in polling watcher instead.
+- If `efsw` is unavailable, HotPlugPP logs a status message and keeps hot-reload enabled by using the built-in polling watcher instead.
 - If the plugin path is invalid or the containing directory cannot be watched, the plugin still loads; only automatic watching is disabled for that load.
 
 To force the polling watcher even when `efsw` is available:
 
 ```bash
 cmake -S . -B build -DHOTPLUGPP_USE_EFSW=OFF
+```
+
+## CMake Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `HOTPLUGPP_USE_EFSW` | `ON` | Enable efsw file watcher integration |
+| `HOTPLUGPP_FETCH_EFSW` | `ON` | Fetch efsw via FetchContent if not installed |
+| `HOTPLUGPP_BUILD_TESTS` | `ON` | Configure the test suite (built explicitly via `build_hotplugpp_tests`) |
+| `HOTPLUGPP_FETCH_GOOGLETEST` | `ON` | Fetch GoogleTest via FetchContent if not installed; falls back to bundled shim when off |
+
+Offline / air-gapped builds:
+```bash
+cmake -S . -B build -DHOTPLUGPP_FETCH_EFSW=OFF -DHOTPLUGPP_FETCH_GOOGLETEST=OFF
 ```
 
 ## Creating a Plugin
@@ -70,23 +84,41 @@ See [TUTORIAL](https://github.com/fica99/HotPlugPP/wiki/TUTORIAL) for a complete
 
 int main() {
     hotplugpp::PluginLoader loader;
+
+    // Optional: receive a notification after each successful reload.
+    loader.setReloadCallback([]() {
+        // Called on the host thread, after the new plugin has been loaded.
+        // Re-fetch your plugin pointer here if you cache it.
+    });
+
     if (!loader.loadPlugin("./libmy_plugin.so")) {
         return 1;
     }
 
-    auto* plugin = loader.getPlugin();
-    if (plugin) {
-        plugin->onUpdate(0.016f);
-    }
-    loader.checkAndReload();  // Applies queued watcher events on the caller thread
+    while (running) {
+        // Apply any watcher-queued reload on the host thread.
+        auto result = loader.checkAndReload();
+        if (result == hotplugpp::PluginLoader::ReloadResult::ReloadFailed) {
+            // Handle reload failure (plugin is now unloaded).
+        }
 
+        auto* plugin = loader.getPlugin();
+        if (plugin) {
+            plugin->onUpdate(deltaTime);
+        }
+    }
     return 0;
 }
 ```
 
 See [API](https://github.com/fica99/HotPlugPP/wiki/API) for complete API documentation.
 
-`checkAndReload()` still needs to be called from your main loop. The background watcher only marks the plugin as pending reload, coalesces duplicate change notifications, and leaves the unload/reload work on the caller thread.
+`checkAndReload()` must be called from your host thread. The background watcher only marks the plugin as pending reload and coalesces duplicate change events; all unload/reload work happens on the caller thread when `checkAndReload()` is invoked.
+
+### Thread Safety
+
+- `loadPlugin()`, `unloadPlugin()`, `checkAndReload()`, `getPlugin()` — call from **one thread only** (your host/main thread).
+- The background watcher thread runs internally and communicates exclusively via atomic flags; it never touches the plugin instance directly.
 
 ## Platform Support
 
