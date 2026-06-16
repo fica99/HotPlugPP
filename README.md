@@ -8,6 +8,7 @@ A lightweight, cross-platform plugin system in modern C++ with support for runti
 - 🔥 **Watcher-Based Hot-Reloading**: Queue reloads from a background watcher and apply them on your host loop
 - 🌐 **Cross-Platform**: Works on Windows (.dll), Linux (.so), and macOS (.dylib)
 - 🎯 **Clean Interface**: Simple, intuitive plugin API
+- **Header Hygiene**: Public headers avoid platform dynamic-loader headers such as `windows.h`
 - 🛠️ **Modern C++**: Uses C++17 features for clean, maintainable code
 - 🚀 **Pragmatic Fallbacks**: Uses `efsw` when available and falls back to built-in polling when it is not
 

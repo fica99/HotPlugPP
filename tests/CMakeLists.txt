@@ -105,6 +105,7 @@ set_target_properties(failing_plugin PROPERTIES
 # parallel Visual Studio builds.
 add_executable(hotplugpp_tests
     version_tests.cpp
+    plugin_loader_header_tests.cpp
     plugin_loader_tests.cpp
     i_plugin_tests.cpp
     integration_tests.cpp

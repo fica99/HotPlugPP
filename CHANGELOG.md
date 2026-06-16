@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Removed platform dynamic-loader headers from `plugin_loader.hpp`; Windows consumers no longer inherit `windows.h` macros from this public header.
+- Moved plugin loader native handles and factory-function state behind a private PImpl with RAII library unloading.
+- Added a public-header hygiene compile test for Win32 `min`/`max` macro leakage.
+
 ## Issue #18 - Watcher-based plugin hot-reload
 
 - Added automatic plugin file watching in `PluginLoader`, with `efsw` integration when available.
