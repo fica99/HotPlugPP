@@ -2,10 +2,13 @@
 
 #include "plugin_watcher.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <system_error>
+#include <thread>
 #include <utility>
 
 #ifdef _WIN32
@@ -18,6 +21,7 @@
 #include <windows.h>
 #else
 #include <dlfcn.h>
+#include <unistd.h>
 #endif
 
 #include <sys/stat.h>
@@ -25,6 +29,78 @@
 namespace hotplugpp {
 
 namespace {
+
+namespace fs = std::filesystem;
+
+// Filename prefix for the loader's co-located shadow copies. Kept in sync with the
+// test suite (tests/plugin_loader_tests.cpp).
+constexpr const char* kShadowPrefix = ".hotplugpp-shadow-";
+// A rebuild's linker may briefly hold the output file when the watcher fires;
+// retry the copy a few times before giving up.
+constexpr int kCopyRetries = 20;
+constexpr auto kCopyRetryDelay = std::chrono::milliseconds(25);
+
+unsigned long currentProcessId() {
+#ifdef _WIN32
+    return static_cast<unsigned long>(GetCurrentProcessId());
+#else
+    return static_cast<unsigned long>(getpid());
+#endif
+}
+
+// Copies originalPath to a uniquely named sibling file (same directory) and returns
+// the absolute shadow path, or nullopt if no copy could be made. Loading this copy
+// instead of the original keeps the build-output file unlocked so a rebuild can
+// overwrite it (fixes the Windows DLL lock that broke hot-reload).
+std::optional<std::string> makeShadowCopy(const std::string& originalPath) {
+    if (originalPath.empty()) {
+        return std::nullopt;
+    }
+
+    std::error_code ec;
+    fs::path original = fs::absolute(originalPath, ec);
+    if (ec) {
+        original = fs::path(originalPath);
+        ec.clear();
+    }
+
+    fs::path directory = original.has_parent_path() ? original.parent_path() : fs::current_path(ec);
+    if (ec || directory.empty()) {
+        return std::nullopt;
+    }
+    // Normalize once so the returned shadow path (later used for removal) is absolute.
+    if (fs::path absoluteDir = fs::absolute(directory, ec); !ec) {
+        directory = std::move(absoluteDir);
+    }
+
+    // Process-unique, monotonic name: the atomic counter never repeats within a run,
+    // and copy_file(overwrite_existing) tolerates a stale leftover from a previous
+    // run that happened to reuse this pid.
+    static std::atomic<unsigned long long> counter{0};
+    const std::string name = std::string(kShadowPrefix) + original.stem().string() + "-" +
+                             std::to_string(currentProcessId()) + "-" +
+                             std::to_string(counter.fetch_add(1)) + original.extension().string();
+    const fs::path shadow = directory / name;
+
+    for (int attempt = 0; attempt < kCopyRetries; ++attempt) {
+        ec.clear();
+        fs::copy_file(original, shadow, fs::copy_options::overwrite_existing, ec);
+        if (!ec) {
+            return shadow.string();
+        }
+        // A missing source will not reappear; the retry budget exists only for a
+        // rebuild's transient write lock, so do not burn it here.
+        if (ec == std::errc::no_such_file_or_directory) {
+            break;
+        }
+        std::this_thread::sleep_for(kCopyRetryDelay);
+    }
+
+    // Remove any partial candidate so a failed copy is not left behind.
+    std::error_code removeEc;
+    fs::remove(shadow, removeEc);
+    return std::nullopt;
+}
 
 class DynamicLibrary {
   public:
@@ -35,12 +111,17 @@ class DynamicLibrary {
     DynamicLibrary& operator=(const DynamicLibrary&) = delete;
 
     DynamicLibrary(DynamicLibrary&& other) noexcept
-        : m_handle(std::exchange(other.m_handle, nullptr)) {}
+        : m_handle(std::exchange(other.m_handle, nullptr)),
+          m_shadowPath(std::move(other.m_shadowPath)) {
+        other.m_shadowPath.clear();
+    }
 
     DynamicLibrary& operator=(DynamicLibrary&& other) noexcept {
         if (this != &other) {
             reset();
             m_handle = std::exchange(other.m_handle, nullptr);
+            m_shadowPath = std::move(other.m_shadowPath);
+            other.m_shadowPath.clear();
         }
         return *this;
     }
@@ -48,28 +129,47 @@ class DynamicLibrary {
     [[nodiscard]] bool load(const std::string& path) {
         reset();
 
+        // Prefer loading a co-located shadow copy so the original stays unlocked.
+        if (std::optional<std::string> shadow = makeShadowCopy(path)) {
+            if (loadNative(*shadow)) {
+                m_shadowPath = std::move(*shadow);
+                return true;
+            }
+            // The copy is the same bytes as the original, so do not retry the
+            // original. Remove the copy, preserving the load error (on Windows the
+            // removal's DeleteFileW would otherwise overwrite GetLastError).
 #ifdef _WIN32
-        const std::filesystem::path nativePath(path);
-        m_handle = LoadLibraryW(nativePath.c_str());
-#else
-        dlerror();
-        m_handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+            const DWORD loadError = ::GetLastError();
 #endif
+            std::error_code ec;
+            fs::remove(*shadow, ec);
+#ifdef _WIN32
+            ::SetLastError(loadError);
+#endif
+            return false;
+        }
 
-        return m_handle != nullptr;
+        // No shadow copy could be made (e.g. a read-only directory): load the
+        // original directly, preserving the historical behavior. On Windows the
+        // original is then locked, so hot-reload may not work for it.
+        return loadNative(path);
     }
 
     void reset() noexcept {
-        if (!m_handle) {
-            return;
+        if (m_handle) {
+#ifdef _WIN32
+            FreeLibrary(m_handle);
+#else
+            dlclose(m_handle);
+#endif
+            m_handle = nullptr;
         }
 
-#ifdef _WIN32
-        FreeLibrary(m_handle);
-#else
-        dlclose(m_handle);
-#endif
-        m_handle = nullptr;
+        if (!m_shadowPath.empty()) {
+            std::error_code ec;
+            fs::remove(m_shadowPath, ec); // best-effort
+            m_shadowPath.clear();
+        }
     }
 
     [[nodiscard]] explicit operator bool() const noexcept { return m_handle != nullptr; }
@@ -87,11 +187,23 @@ class DynamicLibrary {
     }
 
   private:
+    [[nodiscard]] bool loadNative(const std::string& path) {
+#ifdef _WIN32
+        const fs::path nativePath(path);
+        m_handle = LoadLibraryW(nativePath.c_str());
+#else
+        dlerror();
+        m_handle = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+#endif
+        return m_handle != nullptr;
+    }
+
 #ifdef _WIN32
     HMODULE m_handle = nullptr;
 #else
     void* m_handle = nullptr;
 #endif
+    std::string m_shadowPath;
 };
 
 std::string getLastDynamicLibraryError() {

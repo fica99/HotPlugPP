@@ -32,6 +32,27 @@ cmake -S . -B build -DHOTPLUGPP_FETCH_EFSW=OFF
 - `checkAndReload()` must still be called from the host loop to apply the reload safely.
 - Rapid duplicate file notifications are debounced so one rebuild triggers one reload.
 
+## Why rebuilds work while the plugin is loaded (shadow copy)
+
+On Windows the OS holds an exclusive lock on a loaded `.dll`, so loading the
+build-output file directly would block the next rebuild from overwriting it and
+hot-reload would never fire. To avoid this, `PluginLoader` loads a **shadow copy**:
+
+- On load it copies the library to a uniquely named sibling file in the same
+  directory (`.hotplugpp-shadow-<name>-<pid>-<n>.<ext>`) and loads that copy
+  (`LoadLibraryW` on Windows, `dlopen` on POSIX). The original build-output file is
+  never opened by the loader, so it stays writable for rebuilds.
+- The shadow copy lives in the *same* directory as the original (not a temp dir),
+  so dependency resolution is unchanged on Windows and `$ORIGIN`/`@loader_path`
+  dependencies keep resolving on POSIX.
+- The shadow filename differs from the watched original, so the watcher ignores
+  shadow create/delete events — there is no reload loop.
+- Shadow copies are deleted on unload, on reload, and on a failed load. A rare
+  crash may leave one behind; they are gitignored and harmless.
+- If the plugin directory is not writable, the loader falls back to loading the
+  original file directly. Loading still succeeds, but on Windows the original is
+  then locked, so hot-reload may not work until the plugin is unloaded.
+
 ## Local verification
 
 ```bash

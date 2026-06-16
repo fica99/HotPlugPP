@@ -44,6 +44,17 @@ To force the polling watcher even when `efsw` is available:
 cmake -S . -B build -DHOTPLUGPP_USE_EFSW=OFF
 ```
 
+### File locking and shadow copies
+
+To keep hot-reload working on Windows, `PluginLoader` never loads your build-output
+file directly. On load it copies the library to a uniquely named **shadow copy** in
+the same directory (e.g. `.hotplugpp-shadow-<name>-<pid>-<n>.dll`) and loads that
+copy. The original file is left unlocked, so your build can overwrite it and the
+watcher can trigger a reload; the shadow copy is removed on unload and reload. If
+the plugin directory is not writable, HotPlugPP falls back to loading the original
+directly (hot-reload may not work on Windows in that case). Shadow copies match the
+ignored `*.dll`/`*.so`/`*.dylib` patterns, so they are never committed.
+
 ## CMake Options
 
 | Option | Default | Description |
